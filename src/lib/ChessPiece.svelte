@@ -3,7 +3,7 @@
   let { piece, isSelected = false, isLegalMove = false } = $props();
 
   // Map piece type and color to SVG asset path
-  const svgPath = `/chess-pieces/${piece.color}-${piece.type}.svg`;
+  let svgPath = $derived(`/chess-pieces/${piece.color}-${piece.type}.svg`);
 </script>
 
 <div
