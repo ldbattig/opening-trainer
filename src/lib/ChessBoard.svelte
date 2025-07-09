@@ -1,8 +1,8 @@
 <svelte:options runes={true} />
 <script lang="ts">
-  import ChessPiece from './ChessPiece.svelte';
-  import type { Square, Position, ChessPiece as Piece, BoardState, PieceColor } from './types';
-  import { createInitialGameState, getPieceAt, setPieceAt, positionToCoordinates, coordinatesToPosition, getKingPosition, getPiecesByColor } from './chessGame';
+  import ChessPiece from '$lib/ChessPiece.svelte';
+  import type { Square, Position, ChessPiece as Piece, BoardState, PieceColor } from '$lib/types';
+  import { createInitialGameState, getPieceAt, setPieceAt, positionToCoordinates, coordinatesToPosition, getKingPosition, getPiecesByColor } from '$lib/chessGame';
   
   // Chess board component
   let { boardSize = 400 } = $props(); // Default board size in pixels
