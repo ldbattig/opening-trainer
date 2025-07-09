@@ -1,5 +1,5 @@
 <script lang="ts">
-  import ChessBoard from '$lib/ChessBoard.svelte';
+  import ChessBoard from '$lib/components/ChessBoard.svelte';
 
   let chessBoardRef = $state<any>(null);
 </script>

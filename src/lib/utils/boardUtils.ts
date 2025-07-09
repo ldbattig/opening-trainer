@@ -1,4 +1,4 @@
-import type { GameState, BoardState, ChessPiece, Position, PieceType, PieceColor } from './types';
+import type { GameState, BoardState, ChessPiece, Position, PieceType, PieceColor } from '../types';
 
 // Initialize empty board
 function createEmptyBoard(): BoardState {
