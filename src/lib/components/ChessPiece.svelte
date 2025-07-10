@@ -1,6 +1,6 @@
 <svelte:options runes={true} />
 <script lang="ts">
-  let { piece, isSelected = false, isLegalMove = false } = $props();
+  let { piece, isSelected = false, isLegalMove = false, draggable = false, ondragstart = undefined, ondragend = undefined } = $props();
 
   // Derive SVG path for the piece
   let svgPath = $derived(() => `/chess-pieces/${piece.color}-${piece.type}.svg`);
@@ -18,11 +18,17 @@
   data-piece-type={piece.type}
   data-piece-color={piece.color}
   data-position={piece.position}
+  draggable={draggable}
+  ondragstart={ondragstart}
+  ondragend={ondragend}
+  role="button"
+  tabindex="0"
+  aria-label={`${piece.color} ${piece.type} at ${piece.position}`}
 >
   <img
     src={svgPath()}
     alt={`${piece.color} ${piece.type}`}
     class="w-10 h-10 md:w-12 md:h-12 drop-shadow group-hover:scale-110 transition-transform duration-200"
-    draggable="false"
+    draggable={draggable}
   />
 </div>

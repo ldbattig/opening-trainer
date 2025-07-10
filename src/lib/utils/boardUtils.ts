@@ -1,4 +1,25 @@
-import type { GameState, BoardState, ChessPiece, Position, PieceType, PieceColor } from '../types';
+import type { GameState, BoardState, ChessPiece, Position, PieceType, PieceColor, Square } from '../types';
+
+export function generateBoardSquares(): Square[] {
+  return Array.from({ length: 64 }, (_, i) => {
+    const row = Math.floor(i / 8);
+    const col = i % 8;
+    const isLight = (row + col) % 2 === 0;
+    const file = String.fromCharCode(97 + col); // a-h
+    const rank = 8 - row; // 8-1
+    const position = `${file}${rank}`;
+    
+    return {
+      id: i,
+      row,
+      col,
+      isLight,
+      position,
+      file,
+      rank
+    };
+  });
+}
 
 // Initialize empty board
 function createEmptyBoard(): BoardState {
@@ -16,7 +37,7 @@ function createPiece(type: PieceType, color: PieceColor, position: Position): Ch
 }
 
 // Get initial board setup
-function getInitialBoard(): BoardState {
+export function getInitialBoard(): BoardState {
   const board = createEmptyBoard();
   
   // Set up pawns
@@ -39,27 +60,28 @@ function getInitialBoard(): BoardState {
 }
 
 // Convert position to board coordinates
-function positionToCoordinates(position: Position): [number, number] {
+export function positionToCoordinates(position: Position): [number, number] {
   const file = position.charCodeAt(0) - 97; // a=0, b=1, etc.
   const rank = 8 - parseInt(position[1]); // 1=7, 2=6, etc.
   return [rank, file];
 }
 
 // Convert board coordinates to position
-function coordinatesToPosition(row: number, col: number): Position {
+export function coordinatesToPosition(row: number, col: number): Position {
   const file = String.fromCharCode(97 + col);
   const rank = 8 - row;
   return `${file}${rank}`;
 }
 
 // Get piece at position
-function getPieceAt(board: BoardState, position: Position): ChessPiece | null {
+export function getPieceAt(board: BoardState, position: Position): ChessPiece | undefined {
   const [row, col] = positionToCoordinates(position);
-  return board[row][col];
+  const piece = board[row][col];
+  return piece === null ? undefined : piece;
 }
 
 // Set piece at position
-function setPieceAt(board: BoardState, position: Position, piece: ChessPiece | null): void {
+export function setPieceAt(board: BoardState, position: Position, piece: ChessPiece | null): void {
   const [row, col] = positionToCoordinates(position);
   board[row][col] = piece;
 }
@@ -104,12 +126,3 @@ export function getKingPosition(board: BoardState, color: PieceColor): Position 
   }
   return null;
 }
-
-// Export utility functions
-export {
-  positionToCoordinates,
-  coordinatesToPosition,
-  getPieceAt,
-  setPieceAt,
-  createPiece
-}; 
