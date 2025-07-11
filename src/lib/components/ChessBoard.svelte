@@ -15,6 +15,9 @@
   // Drag-and-drop state
   let draggingPiece: Position | null = null;
   let dragOverSquare = $state<Position | null>(null);
+
+  // Promotion modal state
+  const promotionPieces = ['queen', 'rook', 'bishop', 'knight'];
   
   // Helper: get piece for a square
   function getPieceForSquare(square: Square) {
@@ -29,7 +32,7 @@
       // Select a piece if it belongs to the current player
       if (clickedPiece && clickedPiece.color === gameState.currentPlayer) {
         gameState.selectedPiece = position;
-        gameState.legalMoves = getLegalMoves(clickedPiece, gameState.board);
+        gameState.legalMoves = getLegalMoves(clickedPiece, gameState.board, gameState.enPassantTarget ?? undefined);
       }
     } else {
       // If clicking the same piece, deselect
@@ -47,7 +50,7 @@
         // If clicking another own piece, select it
         if (clickedPiece && clickedPiece.color === gameState.currentPlayer) {
           gameState.selectedPiece = position;
-          gameState.legalMoves = getLegalMoves(clickedPiece, gameState.board);
+          gameState.legalMoves = getLegalMoves(clickedPiece, gameState.board, gameState.enPassantTarget ?? undefined);
         } else {
           // Deselect if invalid
           gameState.selectedPiece = null;
@@ -62,7 +65,7 @@
     if (piece && piece.color === gameState.currentPlayer) {
       draggingPiece = position;
       gameState.selectedPiece = position;
-      gameState.legalMoves = getLegalMoves(piece, gameState.board);
+      gameState.legalMoves = getLegalMoves(piece, gameState.board, gameState.enPassantTarget ?? undefined);
     }
   }
 
@@ -94,6 +97,12 @@
     dragOverSquare = null;
     gameState.selectedPiece = null;
     gameState.legalMoves = [];
+  }
+
+  function handlePromotionSelect(piece: string) {
+    if (gameState.pendingPromotion) {
+      makeMove(gameState.pendingPromotion.from, gameState.pendingPromotion.to, piece);
+    }
   }
 </script>
 
@@ -141,6 +150,26 @@
         {/if}
       </button>
     {/each}
+    <!-- Promotion Modal -->
+    {#if gameState.pendingPromotion}
+      <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
+        <div class="bg-white rounded-lg shadow-lg p-6 flex flex-col items-center w-72 max-w-full">
+          <h2 class="text-lg font-bold mb-4 text-center">Choose Promotion Piece</h2>
+          <div class="grid grid-cols-2 gap-4 w-full">
+            {#each promotionPieces as piece}
+              <button
+                class="flex flex-col items-center justify-center p-3 border border-neutral-300 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onclick={() => handlePromotionSelect(piece)}
+                tabindex="0"
+              >
+                <img src={`/chess-pieces/${gameState.pendingPromotion.color}-${piece}.svg`} alt={piece} class="w-10 h-10 mb-1" />
+                <span class="capitalize text-sm font-medium">{piece}</span>
+              </button>
+            {/each}
+          </div>
+        </div>
+      </div>
+    {/if}
   </div>
   <div class="w-48">
     <MoveHistory />

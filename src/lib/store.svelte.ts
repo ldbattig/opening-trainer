@@ -3,17 +3,22 @@ import { coordinatesToPosition, createInitialGameState, getInitialBoard, getPiec
 import { createMove, updateMoveWithGameStatus } from "./utils/moveHistoryUtils";
 import { getLegalMoves, isKingInCheck } from "./utils/moveLogic";
 
-export const gameState = $state(createInitialGameState());
+export const gameState = $state({
+  ...createInitialGameState(),
+  enPassantTarget: null as Position | null,
+  pendingPromotion: null as { from: Position; to: Position; color: string } | null
+});
 
 export function resetGame() {
-  gameState.board = getInitialBoard()
+  gameState.board = getInitialBoard();
+  gameState.currentPlayer = 'white';
   gameState.moveHistory = [];
   gameState.gameStatus = 'playing';
   gameState.selectedPiece = null;
   gameState.legalMoves = [];
 }
 
-export function makeMove(from: Position, to: Position) {
+export function makeMove(from: Position, to: Position, promotionPiece?: string) {
   const board = gameState.board;
   const movingPiece = getPieceAt(board, from);
   if (!movingPiece) return;
@@ -21,8 +26,29 @@ export function makeMove(from: Position, to: Position) {
   // Capture if needed
   const captured = getPieceAt(board, to);
   
+  // Check for promotion
+  const isPromotion = movingPiece.type === 'pawn' && (to[1] === '8' || to[1] === '1');
+  if (isPromotion && !promotionPiece) {
+    // Trigger promotion UI
+    gameState.pendingPromotion = { from, to, color: movingPiece.color };
+    return;
+  }
+
   // Create move object using utility function
   const move = createMove(from, to, movingPiece, captured || null, board);
+  if (isPromotion && promotionPiece) {
+    move.isPromotion = true;
+    move.promotionPiece = promotionPiece as any;
+  }
+
+  // Track en passant target
+  gameState.enPassantTarget = null;
+  if (movingPiece.type === 'pawn' && Math.abs(positionToCoordinates(from)[0] - positionToCoordinates(to)[0]) === 2) {
+    // Set en passant target square
+    const dir = movingPiece.color === 'white' ? -1 : 1;
+    const [fromRow, fromCol] = positionToCoordinates(from);
+    gameState.enPassantTarget = coordinatesToPosition(fromRow + dir, fromCol);
+  }
   
   // Execute the move on the board
   setPieceAt(
@@ -33,6 +59,29 @@ export function makeMove(from: Position, to: Position) {
       : { ...movingPiece, position: to, hasMoved: true }
   );
   setPieceAt(board, from, null);
+
+  // Handle castling: move rook as well
+  if (move.isCastling) {
+    const [fromRow, fromCol] = positionToCoordinates(from);
+    const [toRow, toCol] = positionToCoordinates(to);
+    if (toCol === 6) { // King-side
+      const rookFrom = coordinatesToPosition(fromRow, 7);
+      const rookTo = coordinatesToPosition(fromRow, 5);
+      const rook = getPieceAt(board, rookFrom);
+      if (rook) {
+        setPieceAt(board, rookTo, { ...rook, position: rookTo, hasMoved: true });
+        setPieceAt(board, rookFrom, null);
+      }
+    } else if (toCol === 2) { // Queen-side
+      const rookFrom = coordinatesToPosition(fromRow, 0);
+      const rookTo = coordinatesToPosition(fromRow, 3);
+      const rook = getPieceAt(board, rookFrom);
+      if (rook) {
+        setPieceAt(board, rookTo, { ...rook, position: rookTo, hasMoved: true });
+        setPieceAt(board, rookFrom, null);
+      }
+    }
+  }
   
   // Remove captured pawn for en passant
   if (move.isEnPassant) {
@@ -83,4 +132,5 @@ export function makeMove(from: Position, to: Position) {
     ...gameState.moveHistory,
     updatedMove
   ];
+  gameState.pendingPromotion = null;
 }
