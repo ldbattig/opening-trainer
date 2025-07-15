@@ -8,13 +8,16 @@
   import { gameState, makeMove } from '$lib/store.svelte';
   
   let { boardSize = 400 } = $props();
-  
+  let boardRef: HTMLElement | null = $state(null);
+
   // Generate 8x8 grid positions
   const squares = generateBoardSquares();
 
-  // Drag-and-drop state
-  let draggingPiece: Position | null = null;
-  let dragOverSquare = $state<Position | null>(null);
+  // Drag-and-drop state (pointer events based)
+  let dragging = $state(false);
+  let draggedPiece: { piece: any; origin: Position } | null = $state(null);
+  let pointerX = $state(0);
+  let pointerY = $state(0);
 
   // Promotion modal state
   const promotionPieces = ['queen', 'rook', 'bishop', 'knight'];
@@ -60,41 +63,48 @@
     }
   }
 
-  function handleDragStart(position: Position) {
+  // Handle user picking up a piece
+  function handlePointerDown(e: PointerEvent, position: Position) {
     const piece = getPieceAt(gameState.board, position);
     if (piece && piece.color === gameState.currentPlayer) {
-      draggingPiece = position;
+      dragging = true;
+      draggedPiece = { piece, origin: position };
+      pointerX = e.clientX;
+      pointerY = e.clientY;
       gameState.selectedPiece = position;
       gameState.legalMoves = getLegalMoves(piece, gameState.board, gameState.enPassantTarget ?? undefined);
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     }
   }
 
-  function handleDragOver(event: DragEvent, position: Position) {
-    event.preventDefault();
-    if (draggingPiece && gameState.legalMoves.includes(position)) {
-      dragOverSquare = position;
-    }
+  // Handle user moving piece
+  function handlePointerMove(e: PointerEvent) {
+    if (!dragging || !draggedPiece) return;
+    pointerX = e.clientX;
+    pointerY = e.clientY;
   }
 
-  function handleDragLeave(position: Position) {
-    if (dragOverSquare === position) {
-      dragOverSquare = null;
+  // Handler user putting down a piece
+  function handlePointerUp(e: PointerEvent) {
+    if (!dragging || !draggedPiece || !boardRef) return;
+    dragging = false;
+    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    // Find the square under the pointer
+    const boardRect = boardRef.getBoundingClientRect();
+    const relX = pointerX - boardRect.left;
+    const relY = pointerY - boardRect.top;
+    const squareSize = boardRect.width / 8;
+    const col = Math.floor(relX / squareSize);
+    const row = Math.floor(relY / squareSize);
+    if (col >= 0 && col < 8 && row >= 0 && row < 8) {
+      const files = 'abcdefgh';
+      const ranks = '12345678';
+      const pos: Position = `${files[col]}${ranks[7 - row]}`;
+      if (gameState.legalMoves.includes(pos)) {
+        makeMove(draggedPiece.origin, pos);
+      }
     }
-  }
-
-  function handleDrop(position: Position) {
-    if (draggingPiece && gameState.legalMoves.includes(position)) {
-      makeMove(draggingPiece, position);
-      draggingPiece = null;
-      dragOverSquare = null;
-      gameState.selectedPiece = null;
-      gameState.legalMoves = [];
-    }
-  }
-
-  function handleDragEnd() {
-    draggingPiece = null;
-    dragOverSquare = null;
+    draggedPiece = null;
     gameState.selectedPiece = null;
     gameState.legalMoves = [];
   }
@@ -108,22 +118,22 @@
 
 <div class="flex flex-col md:flex-row gap-4">
   <div
-    class="grid grid-cols-8 grid-rows-8 border-2 border-neutral-800 relative"
+    bind:this={boardRef}
+    class="grid grid-cols-8 grid-rows-8 border-2 border-neutral-800 relative select-none touch-none"
     style="width: {boardSize}px; height: {boardSize}px;"
+    onpointermove={handlePointerMove}
+    onpointerup={handlePointerUp}
   >
     {#each squares as square}
       <button
         type="button"
-        class="relative flex items-center justify-center transition-opacity duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:z-10 {square.isLight ? 'bg-[#f0d9b5]' : 'bg-[#b58863]'} hover:opacity-80 cursor-pointer {dragOverSquare === square.position ? 'ring-2 ring-blue-500 z-20' : ''}"
+        class="relative flex items-center justify-center transition-opacity duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:z-10 {square.isLight ? 'bg-[#f0d9b5]' : 'bg-[#b58863]'} hover:opacity-80 cursor-pointer border-0 p-0 m-0 w-full h-full"
         data-position={square.position}
         data-file={square.file}
         data-rank={square.rank}
         onclick={() => handleSquareClick(square.position)}
         tabindex="0"
-        style="border:none;padding:0;margin:0;width:100%;height:100%;"
-        ondragover={(e) => handleDragOver(e, square.position)}
-        ondragleave={() => handleDragLeave(square.position)}
-        ondrop={() => handleDrop(square.position)}
+        onpointerdown={(e: PointerEvent) => handlePointerDown(e, square.position)}
       >
         <!-- Coordinates for edge squares -->
         {#if square.row === 7}
@@ -138,18 +148,29 @@
         {/if}
         
         <!-- Chess piece -->
-        {#if getPieceForSquare(square)}
+        {#if getPieceForSquare(square) && !(dragging && draggedPiece && draggedPiece.origin === square.position)}
           <ChessPiece 
             piece={getPieceForSquare(square)!}
             isSelected={gameState.selectedPiece === square.position}
             isLegalMove={gameState.legalMoves.includes(square.position)}
-            draggable={getPieceForSquare(square) && getPieceForSquare(square)!.color === gameState.currentPlayer}
-            ondragstart={() => handleDragStart(square.position)}
-            ondragend={handleDragEnd}
+            dragging={!!(dragging && draggedPiece && draggedPiece.origin === square.position)}
           />
         {/if}
       </button>
     {/each}
+    {#if dragging && draggedPiece && boardRef}
+      <div
+        class="absolute left-0 top-0 z-50 pointer-events-none flex items-center justify-center"
+        style="transform:translate({pointerX - boardRef.getBoundingClientRect().left}px, {pointerY - boardRef.getBoundingClientRect().top}px) translate(-50%,-50%); width:{boardSize/8}px; height:{boardSize/8}px;"
+      >
+        <ChessPiece 
+          piece={draggedPiece.piece}
+          isSelected={true}
+          isLegalMove={false}
+          dragging={true}
+        />
+      </div>
+    {/if}
     <!-- Promotion Modal -->
     {#if gameState.pendingPromotion}
       <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
