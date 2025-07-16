@@ -1,7 +1,8 @@
 <svelte:options runes={true} />
 <script lang="ts">
   import Piece from '$lib/components/Piece.svelte';
-  import type { Square, Position } from '$lib/types';
+  import Square from '$lib/components/Square.svelte';
+  import type { Position } from '$lib/types';
   import { generateBoardSquares, getPieceAt } from '$lib/utils/boardUtils';
   import { getLegalMoves } from '$lib/utils/moveLogic';
   import { gameState, makeMove } from '$lib/store.svelte';
@@ -25,7 +26,7 @@
   const promotionPieces = ['queen', 'rook', 'bishop', 'knight'];
   
   // Helper: get piece for a square
-  function getPieceForSquare(square: Square) {
+  function getPieceForSquare(square: any) {
     return getPieceAt(gameState.board, square.position);
   }
 
@@ -155,41 +156,19 @@
       onpointerup={handlePointerUp}
     >
       {#each squares() as square}
-        <button
-          type="button"
-          class="relative flex items-center justify-center transition-opacity duration-200 {gameState.selectedPiece == square.position ? 'bg-blue-200': ''} {square.isLight ? 'bg-[#f0d9b5]' : 'bg-[#b58863]'} { isLastMove(square.position) ? 'bg-yellow-100 ring-inset' : '' } hover:opacity-80 cursor-pointer border-0 p-0 m-0 w-full h-full"
-          data-position={square.position}
-          data-file={square.file}
-          data-rank={square.rank}
-          onclick={() => handleSquareClick(square.position)}
-          tabindex="0"
-          onpointerdown={(e: PointerEvent) => handlePointerDown(e, square.position)}
-        >
-          <!-- Legal move indicator (dot) -->
-          {#if gameState.legalMoves.includes(square.position) && (!getPieceForSquare(square) || getPieceForSquare(square)?.color !== gameState.currentPlayer)}
-            <span class="absolute w-4 h-4 bg-blue-500 bg-opacity-60 rounded-full z-20" style="left: 50%; top: 50%; transform: translate(-50%, -50%);"></span>
-          {/if}
-          <!-- Coordinates for edge squares, orientation aware -->
-          {#if (gameState.boardOrientation === 'white' && square.row === 7) || (gameState.boardOrientation === 'black' && square.row === 0)}
-            <span class="absolute bottom-1 right-1 text-xs font-bold text-neutral-800 select-none">
-              {square.file}
-            </span>
-          {/if}
-          {#if (gameState.boardOrientation === 'white' && square.col === 0) || (gameState.boardOrientation === 'black' && square.col === 7)}
-            <span class="absolute top-1 left-1 text-xs font-bold text-neutral-800 select-none">
-              {square.rank}
-            </span>
-          {/if}
-          <!-- Chess piece -->
-          {#if getPieceForSquare(square) && !(dragging && draggedPiece && draggedPiece.origin === square.position)}
-            <Piece 
-              piece={getPieceForSquare(square)!}
-              isSelected={gameState.selectedPiece === square.position}
-              isLegalMove={gameState.legalMoves.includes(square.position)}
-              dragging={!!(dragging && draggedPiece && draggedPiece.origin === square.position)}
-            />
-          {/if}
-        </button>
+        <Square
+          square={square}
+          isSelected={!!(gameState.selectedPiece == square.position)}
+          isLegalMove={!!gameState.legalMoves && gameState.legalMoves.includes(square.position)}
+          isLastMove={!!isLastMove(square.position)}
+          piece={getPieceForSquare(square) ?? null}
+          boardOrientation={gameState.boardOrientation}
+          currentPlayer={gameState.currentPlayer}
+          dragging={!!dragging}
+          draggedPieceOrigin={draggedPiece?.origin ?? null}
+          onSquareClick={handleSquareClick}
+          onPointerDown={handlePointerDown}
+        />
       {/each}
       {#if dragging && draggedPiece && boardRef}
         <div
