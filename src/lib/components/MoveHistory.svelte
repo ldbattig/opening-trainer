@@ -7,7 +7,7 @@
   {#if gameState.moveHistory.length === 0}
     <div class="flex flex-col items-center justify-center h-24 text-gray-400 text-sm select-none">
       <span>No moves yet</span>
-      <span class="text-xs">Your moves will appear here</span>
+      <span class="text-xs p-2">Your moves will appear here</span>
     </div>
   {:else}
     <ol class="list-decimal pl-4 space-y-1">
