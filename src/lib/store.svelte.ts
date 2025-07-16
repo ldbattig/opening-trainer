@@ -19,6 +19,8 @@ export function resetGame() {
   gameState.gameStatus = 'playing';
   gameState.selectedPiece = null;
   gameState.legalMoves = [];
+  gameState.enPassantTarget = null;
+  gameState.pendingPromotion = null;
   gameState.lastMove = null;
   gameState.highlightedSquares = [];
 }
