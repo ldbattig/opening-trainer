@@ -8,6 +8,8 @@ export const gameState = $state({
   enPassantTarget: null as Position | null,
   pendingPromotion: null as { from: Position; to: Position; color: string } | null,
   boardOrientation: 'white' as 'white' | 'black',
+  lastMove: null as { from: Position; to: Position } | null,
+  highlightedSquares: [] as Position[],
 });
 
 export function resetGame() {
@@ -17,6 +19,8 @@ export function resetGame() {
   gameState.gameStatus = 'playing';
   gameState.selectedPiece = null;
   gameState.legalMoves = [];
+  gameState.lastMove = null;
+  gameState.highlightedSquares = [];
 }
 
 export function toggleBoardOrientation() {
@@ -138,4 +142,7 @@ export function makeMove(from: Position, to: Position, promotionPiece?: string) 
     updatedMove
   ];
   gameState.pendingPromotion = null;
+  // Set last move and highlighted squares
+  gameState.lastMove = { from, to };
+  gameState.highlightedSquares = [from, to];
 }

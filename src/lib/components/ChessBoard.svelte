@@ -120,6 +120,11 @@
       makeMove(gameState.pendingPromotion.from, gameState.pendingPromotion.to, piece);
     }
   }
+
+  function isLastMove(pos: Position) {
+    return gameState.lastMove
+      && (gameState.lastMove.from === pos || gameState.lastMove.to === pos);
+  }
 </script>
 
 <div class="flex flex-col md:flex-row gap-4">
@@ -134,7 +139,7 @@
       {#each squares() as square}
         <button
           type="button"
-          class="relative flex items-center justify-center transition-opacity duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:z-10 {square.isLight ? 'bg-[#f0d9b5]' : 'bg-[#b58863]'} hover:opacity-80 cursor-pointer border-0 p-0 m-0 w-full h-full"
+          class="relative flex items-center justify-center transition-opacity duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:z-10 {square.isLight ? 'bg-[#f0d9b5]' : 'bg-[#b58863]'} { isLastMove(square.position) ? 'bg-yellow-100 ring-inset' : '' } hover:opacity-80 cursor-pointer border-0 p-0 m-0 w-full h-full"
           data-position={square.position}
           data-file={square.file}
           data-rank={square.rank}
@@ -142,6 +147,10 @@
           tabindex="0"
           onpointerdown={(e: PointerEvent) => handlePointerDown(e, square.position)}
         >
+          <!-- Legal move indicator (dot) -->
+          {#if gameState.legalMoves.includes(square.position) && (!getPieceForSquare(square) || getPieceForSquare(square)?.color !== gameState.currentPlayer)}
+            <span class="absolute w-4 h-4 bg-blue-500 bg-opacity-60 rounded-full z-20" style="left: 50%; top: 50%; transform: translate(-50%, -50%);"></span>
+          {/if}
           <!-- Coordinates for edge squares, orientation aware -->
           {#if (gameState.boardOrientation === 'white' && square.row === 7) || (gameState.boardOrientation === 'black' && square.row === 0)}
             <span class="absolute bottom-1 right-1 text-xs font-bold text-neutral-800 select-none">

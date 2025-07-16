@@ -5,11 +5,10 @@
   // Derive SVG path for the piece
   let svgPath = $derived(() => `/chess-pieces/${piece.color}-${piece.type}.svg`);
 
-  // Compute classes for selection and legal move highlights
+  // Compute classes for selection and dragging highlights only
   let pieceClass = $derived(() => [
     'chess-piece flex items-center justify-center w-full h-full font-bold select-none transition-all duration-200 ease-in group',
     isSelected ? 'bg-yellow-200 bg-opacity-60 rounded' : '',
-    isLegalMove ? 'bg-green-300 bg-opacity-40 rounded-full w-3/5 h-3/5' : '',
     dragging ? 'cursor-grabbing z-50' : 'cursor-grab'
   ].join(' '));
 </script>
