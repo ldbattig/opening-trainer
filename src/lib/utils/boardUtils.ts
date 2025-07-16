@@ -1,24 +1,29 @@
 import type { GameState, BoardState, ChessPiece, Position, PieceType, PieceColor, Square } from '../types';
 
-export function generateBoardSquares(): Square[] {
-  return Array.from({ length: 64 }, (_, i) => {
-    const row = Math.floor(i / 8);
-    const col = i % 8;
-    const isLight = (row + col) % 2 === 0;
-    const file = String.fromCharCode(97 + col); // a-h
-    const rank = 8 - row; // 8-1
-    const position = `${file}${rank}`;
-    
-    return {
-      id: i,
-      row,
-      col,
-      isLight,
-      position,
-      file,
-      rank
-    };
-  });
+export type BoardOrientation = 'white' | 'black';
+
+export function generateBoardSquares(orientation: BoardOrientation = 'white'): Square[] {
+  const squares: Square[] = [];
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const displayRow = orientation === 'white' ? row : 7 - row;
+      const displayCol = orientation === 'white' ? col : 7 - col;
+      const isLight = (displayRow + displayCol) % 2 === 0;
+      const file = String.fromCharCode(97 + displayCol); // a-h
+      const rank = 8 - displayRow; // 8-1
+      const position = `${file}${rank}`;
+      squares.push({
+        id: row * 8 + col,
+        row: displayRow,
+        col: displayCol,
+        isLight,
+        position,
+        file,
+        rank
+      });
+    }
+  }
+  return squares;
 }
 
 // Initialize empty board

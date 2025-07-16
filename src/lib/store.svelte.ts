@@ -6,7 +6,8 @@ import { getLegalMoves, isKingInCheck } from "./utils/moveLogic";
 export const gameState = $state({
   ...createInitialGameState(),
   enPassantTarget: null as Position | null,
-  pendingPromotion: null as { from: Position; to: Position; color: string } | null
+  pendingPromotion: null as { from: Position; to: Position; color: string } | null,
+  boardOrientation: 'white' as 'white' | 'black',
 });
 
 export function resetGame() {
@@ -16,6 +17,10 @@ export function resetGame() {
   gameState.gameStatus = 'playing';
   gameState.selectedPiece = null;
   gameState.legalMoves = [];
+}
+
+export function toggleBoardOrientation() {
+  gameState.boardOrientation = gameState.boardOrientation === 'white' ? 'black' : 'white';
 }
 
 export function makeMove(from: Position, to: Position, promotionPiece?: string) {

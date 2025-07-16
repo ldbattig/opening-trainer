@@ -1,7 +1,6 @@
 <svelte:options runes={true} />
 <script lang="ts">
   import ChessPiece from '$lib/components/ChessPiece.svelte';
-  import MoveHistory from '$lib/components/MoveHistory.svelte';
   import type { Square, Position } from '$lib/types';
   import { generateBoardSquares, getPieceAt } from '$lib/utils/boardUtils';
   import { getLegalMoves } from '$lib/utils/moveLogic';
@@ -10,8 +9,9 @@
   let { boardSize = 400 } = $props();
   let boardRef: HTMLElement | null = $state(null);
 
-  // Generate 8x8 grid positions
-  const squares = generateBoardSquares();
+  function squares() {
+    return generateBoardSquares(gameState.boardOrientation);
+  }
 
   // Drag-and-drop state (pointer events based)
   let dragging = $state(false);
@@ -94,12 +94,18 @@
     const relX = pointerX - boardRect.left;
     const relY = pointerY - boardRect.top;
     const squareSize = boardRect.width / 8;
-    const col = Math.floor(relX / squareSize);
-    const row = Math.floor(relY / squareSize);
+    let col = Math.floor(relX / squareSize);
+    let row = Math.floor(relY / squareSize);
     if (col >= 0 && col < 8 && row >= 0 && row < 8) {
       const files = 'abcdefgh';
       const ranks = '12345678';
-      const pos: Position = `${files[col]}${ranks[7 - row]}`;
+      let pos: Position;
+      if (gameState.boardOrientation === 'white') {
+        pos = `${files[col]}${ranks[7 - row]}`;
+      } else {
+        // Flip col and row for black orientation
+        pos = `${files[7 - col]}${ranks[row]}`;
+      }
       if (gameState.legalMoves.includes(pos)) {
         makeMove(draggedPiece.origin, pos);
       }
@@ -117,82 +123,80 @@
 </script>
 
 <div class="flex flex-col md:flex-row gap-4">
-  <div
-    bind:this={boardRef}
-    class="grid grid-cols-8 grid-rows-8 border-2 border-neutral-800 relative select-none touch-none"
-    style="width: {boardSize}px; height: {boardSize}px;"
-    onpointermove={handlePointerMove}
-    onpointerup={handlePointerUp}
-  >
-    {#each squares as square}
-      <button
-        type="button"
-        class="relative flex items-center justify-center transition-opacity duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:z-10 {square.isLight ? 'bg-[#f0d9b5]' : 'bg-[#b58863]'} hover:opacity-80 cursor-pointer border-0 p-0 m-0 w-full h-full"
-        data-position={square.position}
-        data-file={square.file}
-        data-rank={square.rank}
-        onclick={() => handleSquareClick(square.position)}
-        tabindex="0"
-        onpointerdown={(e: PointerEvent) => handlePointerDown(e, square.position)}
-      >
-        <!-- Coordinates for edge squares -->
-        {#if square.row === 7}
-          <span class="absolute bottom-1 right-1 text-xs font-bold text-neutral-800 select-none">
-            {square.file}
-          </span>
-        {/if}
-        {#if square.col === 0}
-          <span class="absolute top-1 left-1 text-xs font-bold text-neutral-800 select-none">
-            {square.rank}
-          </span>
-        {/if}
-        
-        <!-- Chess piece -->
-        {#if getPieceForSquare(square) && !(dragging && draggedPiece && draggedPiece.origin === square.position)}
+  <div class="flex flex-col items-center">
+    <div
+      bind:this={boardRef}
+      class="grid grid-cols-8 grid-rows-8 border-2 border-neutral-800 relative select-none touch-none"
+      style="width: {boardSize}px; height: {boardSize}px;"
+      onpointermove={handlePointerMove}
+      onpointerup={handlePointerUp}
+    >
+      {#each squares() as square}
+        <button
+          type="button"
+          class="relative flex items-center justify-center transition-opacity duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:z-10 {square.isLight ? 'bg-[#f0d9b5]' : 'bg-[#b58863]'} hover:opacity-80 cursor-pointer border-0 p-0 m-0 w-full h-full"
+          data-position={square.position}
+          data-file={square.file}
+          data-rank={square.rank}
+          onclick={() => handleSquareClick(square.position)}
+          tabindex="0"
+          onpointerdown={(e: PointerEvent) => handlePointerDown(e, square.position)}
+        >
+          <!-- Coordinates for edge squares, orientation aware -->
+          {#if (gameState.boardOrientation === 'white' && square.row === 7) || (gameState.boardOrientation === 'black' && square.row === 0)}
+            <span class="absolute bottom-1 right-1 text-xs font-bold text-neutral-800 select-none">
+              {square.file}
+            </span>
+          {/if}
+          {#if (gameState.boardOrientation === 'white' && square.col === 0) || (gameState.boardOrientation === 'black' && square.col === 7)}
+            <span class="absolute top-1 left-1 text-xs font-bold text-neutral-800 select-none">
+              {square.rank}
+            </span>
+          {/if}
+          <!-- Chess piece -->
+          {#if getPieceForSquare(square) && !(dragging && draggedPiece && draggedPiece.origin === square.position)}
+            <ChessPiece 
+              piece={getPieceForSquare(square)!}
+              isSelected={gameState.selectedPiece === square.position}
+              isLegalMove={gameState.legalMoves.includes(square.position)}
+              dragging={!!(dragging && draggedPiece && draggedPiece.origin === square.position)}
+            />
+          {/if}
+        </button>
+      {/each}
+      {#if dragging && draggedPiece && boardRef}
+        <div
+          class="absolute left-0 top-0 z-50 pointer-events-none flex items-center justify-center"
+          style="transform:translate({pointerX - boardRef.getBoundingClientRect().left}px, {pointerY - boardRef.getBoundingClientRect().top}px) translate(-50%,-50%); width:{boardSize/8}px; height:{boardSize/8}px;"
+        >
           <ChessPiece 
-            piece={getPieceForSquare(square)!}
-            isSelected={gameState.selectedPiece === square.position}
-            isLegalMove={gameState.legalMoves.includes(square.position)}
-            dragging={!!(dragging && draggedPiece && draggedPiece.origin === square.position)}
+            piece={draggedPiece.piece}
+            isSelected={true}
+            isLegalMove={false}
+            dragging={true}
           />
-        {/if}
-      </button>
-    {/each}
-    {#if dragging && draggedPiece && boardRef}
-      <div
-        class="absolute left-0 top-0 z-50 pointer-events-none flex items-center justify-center"
-        style="transform:translate({pointerX - boardRef.getBoundingClientRect().left}px, {pointerY - boardRef.getBoundingClientRect().top}px) translate(-50%,-50%); width:{boardSize/8}px; height:{boardSize/8}px;"
-      >
-        <ChessPiece 
-          piece={draggedPiece.piece}
-          isSelected={true}
-          isLegalMove={false}
-          dragging={true}
-        />
-      </div>
-    {/if}
-    <!-- Promotion Modal -->
-    {#if gameState.pendingPromotion}
-      <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
-        <div class="bg-white rounded-lg shadow-lg p-6 flex flex-col items-center w-72 max-w-full">
-          <h2 class="text-lg font-bold mb-4 text-center">Choose Promotion Piece</h2>
-          <div class="grid grid-cols-2 gap-4 w-full">
-            {#each promotionPieces as piece}
-              <button
-                class="flex flex-col items-center justify-center p-3 border border-neutral-300 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                onclick={() => handlePromotionSelect(piece)}
-                tabindex="0"
-              >
-                <img src={`/chess-pieces/${gameState.pendingPromotion.color}-${piece}.svg`} alt={piece} class="w-10 h-10 mb-1" />
-                <span class="capitalize text-sm font-medium">{piece}</span>
-              </button>
-            {/each}
+        </div>
+      {/if}
+      <!-- Promotion Modal -->
+      {#if gameState.pendingPromotion}
+        <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
+          <div class="bg-white rounded-lg shadow-lg p-6 flex flex-col items-center w-72 max-w-full">
+            <h2 class="text-lg font-bold mb-4 text-center">Choose Promotion Piece</h2>
+            <div class="grid grid-cols-2 gap-4 w-full">
+              {#each promotionPieces as piece}
+                <button
+                  class="flex flex-col items-center justify-center p-3 border border-neutral-300 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onclick={() => handlePromotionSelect(piece)}
+                  tabindex="0"
+                >
+                  <img src={`/chess-pieces/${gameState.pendingPromotion.color}-${piece}.svg`} alt={piece} class="w-10 h-10 mb-1" />
+                  <span class="capitalize text-sm font-medium">{piece}</span>
+                </button>
+              {/each}
+            </div>
           </div>
         </div>
-      </div>
-    {/if}
-  </div>
-  <div class="w-48">
-    <MoveHistory />
+      {/if}
+    </div>
   </div>
 </div> 
