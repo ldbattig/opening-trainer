@@ -1,6 +1,6 @@
 <svelte:options runes={true} />
 <script lang="ts">
-  import ChessPiece from '$lib/components/ChessPiece.svelte';
+  import Piece from '$lib/components/Piece.svelte';
   import type { Square, Position } from '$lib/types';
   import { generateBoardSquares, getPieceAt } from '$lib/utils/boardUtils';
   import { getLegalMoves } from '$lib/utils/moveLogic';
@@ -18,6 +18,8 @@
   let draggedPiece: { piece: any; origin: Position } | null = $state(null);
   let pointerX = $state(0);
   let pointerY = $state(0);
+  let pointerDownPosition: { x: number; y: number } | null = $state(null);
+  const DRAG_THRESHOLD = 5; // px
 
   // Promotion modal state
   const promotionPieces = ['queen', 'rook', 'bishop', 'knight'];
@@ -67,7 +69,8 @@
   function handlePointerDown(e: PointerEvent, position: Position) {
     const piece = getPieceAt(gameState.board, position);
     if (piece && piece.color === gameState.currentPlayer) {
-      dragging = true;
+      pointerDownPosition = { x: e.clientX, y: e.clientY };
+      dragging = false;
       draggedPiece = { piece, origin: position };
       pointerX = e.clientX;
       pointerY = e.clientY;
@@ -79,38 +82,53 @@
 
   // Handle user moving piece
   function handlePointerMove(e: PointerEvent) {
-    if (!dragging || !draggedPiece) return;
-    pointerX = e.clientX;
-    pointerY = e.clientY;
+    if (!draggedPiece || !pointerDownPosition) return;
+    const dx = e.clientX - pointerDownPosition.x;
+    const dy = e.clientY - pointerDownPosition.y;
+    if (!dragging && Math.sqrt(dx * dx + dy * dy) > DRAG_THRESHOLD) {
+      dragging = true;
+    }
+    if (dragging) {
+      pointerX = e.clientX;
+      pointerY = e.clientY;
+    }
   }
 
   // Handler user putting down a piece
   function handlePointerUp(e: PointerEvent) {
-    if (!dragging || !draggedPiece || !boardRef) return;
-    dragging = false;
+    if (!draggedPiece || !boardRef || !pointerDownPosition) return;
     (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-    // Find the square under the pointer
-    const boardRect = boardRef.getBoundingClientRect();
-    const relX = pointerX - boardRect.left;
-    const relY = pointerY - boardRect.top;
-    const squareSize = boardRect.width / 8;
-    let col = Math.floor(relX / squareSize);
-    let row = Math.floor(relY / squareSize);
-    if (col >= 0 && col < 8 && row >= 0 && row < 8) {
-      const files = 'abcdefgh';
-      const ranks = '12345678';
-      let pos: Position;
-      if (gameState.boardOrientation === 'white') {
-        pos = `${files[col]}${ranks[7 - row]}`;
-      } else {
+    const dx = e.clientX - pointerDownPosition.x;
+    const dy = e.clientY - pointerDownPosition.y;
+    if (!dragging && Math.sqrt(dx * dx + dy * dy) <= DRAG_THRESHOLD) {
+      // Treat as click
+      handleSquareClick(draggedPiece.origin);
+    } else if (dragging) {
+      // Drag-and-drop logic
+      const boardRect = boardRef.getBoundingClientRect();
+      const relX = pointerX - boardRect.left;
+      const relY = pointerY - boardRect.top;
+      const squareSize = boardRect.width / 8;
+      let col = Math.floor(relX / squareSize);
+      let row = Math.floor(relY / squareSize);
+      if (col >= 0 && col < 8 && row >= 0 && row < 8) {
+        const files = 'abcdefgh';
+        const ranks = '12345678';
+        let pos: Position;
+        if (gameState.boardOrientation === 'white') {
+          pos = `${files[col]}${ranks[7 - row]}`;
+        } else {
         // Flip col and row for black orientation
-        pos = `${files[7 - col]}${ranks[row]}`;
-      }
-      if (gameState.legalMoves.includes(pos)) {
-        makeMove(draggedPiece.origin, pos);
+          pos = `${files[7 - col]}${ranks[row]}`;
+        }
+        if (gameState.legalMoves.includes(pos)) {
+          makeMove(draggedPiece.origin, pos);
+        }
       }
     }
+    dragging = false;
     draggedPiece = null;
+    pointerDownPosition = null;
     gameState.selectedPiece = null;
     gameState.legalMoves = [];
   }
@@ -139,7 +157,7 @@
       {#each squares() as square}
         <button
           type="button"
-          class="relative flex items-center justify-center transition-opacity duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:z-10 {square.isLight ? 'bg-[#f0d9b5]' : 'bg-[#b58863]'} { isLastMove(square.position) ? 'bg-yellow-100 ring-inset' : '' } hover:opacity-80 cursor-pointer border-0 p-0 m-0 w-full h-full"
+          class="relative flex items-center justify-center transition-opacity duration-200 {gameState.selectedPiece == square.position ? 'bg-blue-200': ''} {square.isLight ? 'bg-[#f0d9b5]' : 'bg-[#b58863]'} { isLastMove(square.position) ? 'bg-yellow-100 ring-inset' : '' } hover:opacity-80 cursor-pointer border-0 p-0 m-0 w-full h-full"
           data-position={square.position}
           data-file={square.file}
           data-rank={square.rank}
@@ -164,7 +182,7 @@
           {/if}
           <!-- Chess piece -->
           {#if getPieceForSquare(square) && !(dragging && draggedPiece && draggedPiece.origin === square.position)}
-            <ChessPiece 
+            <Piece 
               piece={getPieceForSquare(square)!}
               isSelected={gameState.selectedPiece === square.position}
               isLegalMove={gameState.legalMoves.includes(square.position)}
@@ -178,7 +196,7 @@
           class="absolute left-0 top-0 z-50 pointer-events-none flex items-center justify-center"
           style="transform:translate({pointerX - boardRef.getBoundingClientRect().left}px, {pointerY - boardRef.getBoundingClientRect().top}px) translate(-50%,-50%); width:{boardSize/8}px; height:{boardSize/8}px;"
         >
-          <ChessPiece 
+          <Piece 
             piece={draggedPiece.piece}
             isSelected={true}
             isLegalMove={false}

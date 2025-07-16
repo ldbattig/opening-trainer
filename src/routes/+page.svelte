@@ -1,5 +1,5 @@
 <script lang="ts">
-  import ChessBoard from '$lib/components/ChessBoard.svelte';
+  import Board from '$lib/components/Board.svelte';
   import { resetGame, toggleBoardOrientation } from '$lib/store.svelte';
   import MoveHistory from '$lib/components/MoveHistory.svelte';
 </script>
@@ -29,7 +29,7 @@
     </div>
     <div class="flex flex-col md:flex-row gap-4 items-start">
       <div class="relative w-fit mx-auto">
-        <ChessBoard boardSize={500} />
+        <Board boardSize={500} />
       </div>
       <div class="w-48 mt-4 md:mt-0">
         <MoveHistory />
