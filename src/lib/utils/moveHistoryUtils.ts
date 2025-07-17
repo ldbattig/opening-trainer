@@ -118,6 +118,6 @@ export function updateMoveWithGameStatus(
     ...move,
     isCheck,
     isCheckmate,
-    notation: move.notation + (isCheckmate ? '#' : isCheck ? '+' : '')
+    notation: (move.isEnPassant ? move.from.charAt(0) + 'x': '') + move.notation + (isCheckmate ? '#' : isCheck ? '+' : '')
   };
 } 

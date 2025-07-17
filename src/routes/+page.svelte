@@ -1,6 +1,6 @@
 <script lang="ts">
   import Board from '$lib/components/Board.svelte';
-  import { resetGame, toggleBoardOrientation } from '$lib/store.svelte';
+  import { goToNextMove, goToPreviousMove, resetGame, toggleBoardOrientation } from '$lib/store.svelte';
   import MoveHistory from '$lib/components/MoveHistory.svelte';
   import { onMount } from 'svelte';
 
@@ -65,10 +65,19 @@
 
   // initialize…
   onMount(calculateBoardSize);
+
+  // Keyboard navigation
+  function handleKeydown(event: KeyboardEvent) {
+    if (event.key === 'ArrowLeft') {
+      goToPreviousMove();
+    } else if (event.key === 'ArrowRight') {
+      goToNextMove();
+    }
+  }
 </script>
 
 <!-- listen reactively for window resizes -->
-<svelte:window on:resize={calculateBoardSize} />
+<svelte:window on:resize={calculateBoardSize} on:keydown={handleKeydown} />
 
 <svelte:head>
   <title>Chess Trainer</title>
