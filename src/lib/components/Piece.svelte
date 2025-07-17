@@ -25,7 +25,7 @@
   <img
     src={svgPath()}
     alt={`${piece.color} ${piece.type}`}
-    class="w-10 h-10 md:w-12 md:h-12 drop-shadow group-hover:scale-110 transition-transform duration-200"
+    class="w-full h-full drop-shadow group-hover:scale-110 transition-transform duration-200"
     draggable={false}
   />
 </div>

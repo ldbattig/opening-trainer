@@ -2,6 +2,7 @@
   import Board from '$lib/components/Board.svelte';
   import { resetGame, toggleBoardOrientation } from '$lib/store.svelte';
   import MoveHistory from '$lib/components/MoveHistory.svelte';
+  import { onMount } from 'svelte';
 
   // Heading text
   const heading = 'Chess Trainer';
@@ -25,7 +26,49 @@
   function handleMouseLeave(idx: number) {
     letterColors[idx] = '';
   }
+
+  // Responsive board size logic
+  let boardSize = 400;
+
+  function calculateBoardSize() {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    // breakpoints (you can tweak these to match your Tailwind config)
+    const isMobile = vw < 640;
+    const isTablet = vw >= 640 && vw < 1024;
+
+    // “floor” sizes at each breakpoint
+    const minSize = isMobile
+      ? 240
+      : isTablet
+      ? 320
+      : 360;
+
+    // subtract space taken by padding / headers / side panels
+    const horizontalPadding = isMobile
+      ? 32        // 16px each side
+      : isTablet
+      ? 220       // ~ controls + gutters
+      : 320;      // larger side‑panel area
+    const verticalPadding = isMobile
+      ? 180       // header + buttons area
+      : 120;      // header only
+
+    // available drawing area
+    const maxWidth  = vw - horizontalPadding;
+    const maxHeight = vh - verticalPadding;
+
+    // pick the largest square that fits, but not below minSize
+    boardSize = Math.max(minSize, Math.min(maxWidth, maxHeight)) - 50;
+  }
+
+  // initialize…
+  onMount(calculateBoardSize);
 </script>
+
+<!-- listen reactively for window resizes -->
+<svelte:window on:resize={calculateBoardSize} />
 
 <svelte:head>
   <title>Chess Trainer</title>
@@ -44,9 +87,9 @@
     {/each}
   </h1>
   <div class="flex flex-col lg:flex-row w-full max-w-6xl justify-center items-stretch gap-6 md:gap-8">
-    <div class="flex flex-row w-full justify-center items-start gap-4">
+    <div class="flex flex-col-reverse lg:flex-row w-full justify-center items-stretch gap-4">
       <!-- Controls column -->
-      <div class="w-48 flex-shrink-0">
+      <div class="w-full lg:w-48 flex-shrink-0 mb-4 lg:mb-0">
         <div class="bg-white/80 rounded-xl shadow-lg p-4 flex flex-col gap-4 items-center border border-gray-200">
           <button
             type="button"
@@ -65,13 +108,13 @@
         </div>
       </div>
       <!-- Board column -->
-      <div class="flex-1 flex justify-center">
+      <div class="flex-1 flex justify-center items-center">
         <div class="relative w-full max-w-[98vw] md:w-fit mx-auto flex justify-center">
-          <Board boardSize={500} />
+          <Board {boardSize} />
         </div>
       </div>
       <!-- Move history column -->
-      <div class="w-48 flex-shrink-0">
+      <div class="w-full lg:w-48 flex-shrink-0 mt-4 lg:mt-0">
         <div class="bg-white/80 rounded-xl shadow-lg border border-gray-200 p-4 h-full flex flex-col">
           <MoveHistory />
         </div>

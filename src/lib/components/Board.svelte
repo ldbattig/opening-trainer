@@ -150,8 +150,8 @@
   <div class="flex flex-col items-center">
     <div
       bind:this={boardRef}
-      class="grid grid-cols-8 grid-rows-8 shadow-2xl relative select-none touch-none"
-      style="width: {boardSize}px; height: {boardSize}px; min-width: 240px; min-height: 240px; max-width: 98vw; max-height: 98vw;"
+      class="grid grid-cols-8 grid-rows-8 shadow-2xl relative select-none touch-none w-full h-full min-w-0 min-h-0 max-w-full max-h-full aspect-square"
+      style="width: {boardSize}px; height: {boardSize}px; max-width: 98vw; max-height: 98vw;"
       onpointermove={handlePointerMove}
       onpointerup={handlePointerUp}
     >
