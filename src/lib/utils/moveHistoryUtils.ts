@@ -30,11 +30,11 @@ export function generateAlgebraicNotation(
       // exd5 or exd6 e.p.
       let notation = from[0] + 'x' + to;
       if (isEnPassant) notation += ' e.p.';
-      if (isPromotion && promotionPiece) notation += promotionPiece[0].toUpperCase();
+      if (isPromotion && promotionPiece) notation += '=' + promotionPiece[0].toUpperCase();
       return notation;
     } else {
       let notation = to;
-      if (isPromotion && promotionPiece) notation += promotionPiece[0].toUpperCase();
+      if (isPromotion && promotionPiece) notation += '=' + promotionPiece[0].toUpperCase();
       return notation;
     }
   }
@@ -62,9 +62,6 @@ export function generateAlgebraicNotation(
   let notation = pieceLetter + disambiguation;
   if (isCapture) notation += 'x';
   notation += to;
-  
-  // Promotion (shouldn't happen for non-pawns, but just in case)
-  if (isPromotion && promotionPiece) notation += promotionPiece[0].toUpperCase();
   
   return notation;
 }

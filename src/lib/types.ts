@@ -51,4 +51,9 @@ export interface Square {
   file: string;
   rank: number;
   piece?: ChessPiece;
+}
+
+export interface DraggedPiece {
+  piece: ChessPiece;
+  origin: Position;
 } 

@@ -1,5 +1,5 @@
 import type { Position } from "./types";
-import type { BoardState, Move } from "./types";
+import type { BoardState, Move, PieceType, PieceColor } from "./types";
 import { coordinatesToPosition, createInitialGameState, getInitialBoard, getPieceAt, getPiecesByColor, positionToCoordinates, setPieceAt } from "./utils/boardUtils";
 import { createMove, updateMoveWithGameStatus } from "./utils/moveHistoryUtils";
 import { getLegalMoves, isKingInCheck } from "./utils/moveLogic";
@@ -8,7 +8,7 @@ import { getLegalMoves, isKingInCheck } from "./utils/moveLogic";
 export const gameState = $state({
   ...createInitialGameState(),
   enPassantTarget: null as Position | null,
-  pendingPromotion: null as { from: Position; to: Position; color: string } | null,
+  pendingPromotion: null as { from: Position; to: Position; color: PieceColor } | null,
   boardOrientation: 'white' as 'white' | 'black',
   lastMove: null as { from: Position; to: Position } | null,
   highlightedSquares: [] as Position[],
@@ -36,7 +36,7 @@ export function toggleBoardOrientation() {
   gameState.boardOrientation = gameState.boardOrientation === 'white' ? 'black' : 'white';
 }
 
-export function makeMove(from: Position, to: Position, promotionPiece?: string) {
+export function makeMove(from: Position, to: Position, promotionPiece?: PieceType) {
   const board = gameState.board;
   const movingPiece = getPieceAt(board, from);
   if (!movingPiece) return;
@@ -61,7 +61,7 @@ export function makeMove(from: Position, to: Position, promotionPiece?: string) 
   const move = createMove(from, to, movingPiece, captured || null, board);
   if (isPromotion && promotionPiece) {
     move.isPromotion = true;
-    move.promotionPiece = promotionPiece as any;
+    move.promotionPiece = promotionPiece;
   }
 
   // Track en passant target

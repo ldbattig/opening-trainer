@@ -46,7 +46,7 @@
 >
   <!-- Legal move indicator (dot) -->
   {#if isLegalMove && (!piece || piece.color !== currentPlayer)}
-    <span class="absolute w-4 h-4 bg-blue-500 bg-opacity-60 rounded-full z-20" style="left: 50%; top: 50%; transform: translate(-50%, -50%);"></span>
+    <span class="absolute w-4 h-4 bg-blue-500 bg-opacity-60 rounded-full z-20 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"></span>
   {/if}
   <!-- Coordinates for edge squares, orientation aware -->
   {#if showFile}

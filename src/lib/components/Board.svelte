@@ -2,10 +2,11 @@
 <script lang="ts">
   import Piece from '$lib/components/Piece.svelte';
   import Square from '$lib/components/Square.svelte';
-  import type { Position } from '$lib/types';
+  import type { Position, ChessPiece, PieceType } from '$lib/types';
   import { generateBoardSquares, getPieceAt } from '$lib/utils/boardUtils';
   import { getLegalMoves } from '$lib/utils/moveLogic';
   import { gameState, makeMove } from '$lib/store.svelte';
+  import PromotionModal from '$lib/components/PromotionModal.svelte';
   
   let { boardSize = 400 } = $props();
   let boardRef: HTMLElement | null = $state(null);
@@ -16,14 +17,11 @@
 
   // Drag-and-drop state (pointer events based)
   let dragging = $state(false);
-  let draggedPiece: { piece: any; origin: Position } | null = $state(null);
+  let draggedPiece: { piece: ChessPiece; origin: Position } | null = $state(null);
   let pointerX = $state(0);
   let pointerY = $state(0);
   let pointerDownPosition: { x: number; y: number } | null = $state(null);
   const DRAG_THRESHOLD = 5; // px
-
-  // Promotion modal state
-  const promotionPieces = ['queen', 'rook', 'bishop', 'knight'];
   
   // Helper: get piece for a square
   function getPieceForSquare(square: any) {
@@ -134,7 +132,7 @@
     gameState.legalMoves = [];
   }
 
-  function handlePromotionSelect(piece: string) {
+  function handlePromotionSelect(piece: PieceType) {
     if (gameState.pendingPromotion) {
       makeMove(gameState.pendingPromotion.from, gameState.pendingPromotion.to, piece);
     }
@@ -185,23 +183,10 @@
       {/if}
       <!-- Promotion Modal -->
       {#if gameState.pendingPromotion}
-        <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50">
-          <div class="bg-white rounded-2xl shadow-2xl p-6 flex flex-col items-center w-72 max-w-full border-2 border-blue-300">
-            <h2 class="text-lg font-bold mb-4 text-center text-blue-700">Choose Promotion Piece</h2>
-            <div class="grid grid-cols-2 gap-4 w-full">
-              {#each promotionPieces as piece}
-                <button
-                  class="flex flex-col items-center justify-center p-3 border border-neutral-200 rounded-xl hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                  onclick={() => handlePromotionSelect(piece)}
-                  tabindex="0"
-                >
-                  <img src={`/chess-pieces/${gameState.pendingPromotion.color}-${piece}.svg`} alt={piece} class="w-10 h-10 mb-1" />
-                  <span class="capitalize text-sm font-medium text-blue-700">{piece}</span>
-                </button>
-              {/each}
-            </div>
-          </div>
-        </div>
+        <PromotionModal
+          color={gameState.pendingPromotion.color}
+          onSelect={handlePromotionSelect}
+        />
       {/if}
     </div>
   </div>
