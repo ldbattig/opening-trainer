@@ -131,3 +131,19 @@ export function getKingPosition(board: BoardState, color: PieceColor): Position 
   }
   return null;
 }
+
+/**
+ * Convert a move list (array of {from, to}) into coordinate notation for Lichess API
+ * Example: [{from: 'e2', to: 'e4'}, {from: 'e7', to: 'e5'}] => ['e2e4', 'e7e5']
+ */
+export function moveListToCoordinateNotation(moves: { from: string; to: string }[]): string[] {
+  return moves.map(move => `${move.from}${move.to}`);
+}
+
+/**
+ * Extracts a move list in {from, to} format from a move history array
+ * Example: [{from: 'e2', to: 'e4', ...}, ...] => [{from: 'e2', to: 'e4'}, ...]
+ */
+export function extractMoveListFromHistory(moveHistory: { from: string; to: string }[]): { from: string; to: string }[] {
+  return moveHistory.map(move => ({ from: move.from, to: move.to }));
+}

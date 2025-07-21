@@ -56,4 +56,48 @@ export interface Square {
 export interface DraggedPiece {
   piece: ChessPiece;
   origin: Position;
+}
+
+// Lichess Opening API types
+export interface LichessOpeningMove {
+  uci: string;
+  san: string;
+  averageRating: number;
+  white: number;
+  draws: number;
+  black: number;
+  game: unknown;
+  opening?: {
+    eco: string;
+    name: string;
+  };
+}
+
+export interface LichessOpeningResponse {
+  white: number;
+  draws: number;
+  black: number;
+  moves: LichessOpeningMove[];
+  topGames: unknown[];
+  opening?: {
+    eco: string;
+    name: string;
+  };
+}
+
+// Opening tree node for UI
+export interface OpeningTreeNode {
+  name: string;
+  eco: string;
+  moves: LichessOpeningMove[];
+  children?: OpeningTreeNode[];
+  expanded?: boolean;
+}
+
+// Store variables for opening data
+export interface OpeningStore {
+  openingTree: OpeningTreeNode[];
+  selectedOpening: OpeningTreeNode | null;
+  cache: Record<string, LichessOpeningResponse>;
+  rateLimited: boolean;
 } 
