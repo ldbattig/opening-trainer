@@ -11,9 +11,9 @@
     initializeOpeningTree();
   });
 
-  async function handleToggle(node: OpeningTreeNode, depth: number) {
+  async function handleToggle(node: OpeningTreeNode, depth: number, movePath: { from: string; to: string }[]) {
     loadingNode = node;
-    await toggleNode(node, depth);
+    await toggleNode(node, movePath);
     loadingNode = null;
   }
 </script>
@@ -36,6 +36,7 @@
         <OpeningTreeNodeView
           {node}
           depth={0}
+          movePath={[{ from: node.moves[0].uci.slice(0,2), to: node.moves[0].uci.slice(2,4) }]}
           {loadingNode}
           onToggle={handleToggle}
         />

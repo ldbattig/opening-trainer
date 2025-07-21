@@ -4,15 +4,16 @@
   import { ChevronRight, ChevronDown, LoaderCircle } from '@lucide/svelte';
   import Self from './OpeningTreeNodeView.svelte';
 
-  let { node, depth, loadingNode, onToggle } = $props<{
+  let { node, depth, loadingNode, onToggle, movePath } = $props<{
     node: OpeningTreeNode,
     depth: number,
     loadingNode: OpeningTreeNode | null,
-    onToggle?: (node: OpeningTreeNode, depth: number) => void
+    movePath: { from: string; to: string }[],
+    onToggle?: (node: OpeningTreeNode, depth: number, movePath: { from: string; to: string }[]) => void
   }>();
 
   function handleToggle() {
-    onToggle?.(node, depth);
+    onToggle?.(node, depth, movePath);
   }
 </script>
 
@@ -36,8 +37,8 @@
   {/if}
 
   <span>{node.moves[0]?.san}</span>
-  {#if node.eco}
-    <span class="text-gray-500 ml-2">({node.eco})</span>
+  {#if node.name}
+    <span class="text-gray-500 ml-2">({node.name})</span>
   {/if}
 </div>
 
@@ -47,6 +48,7 @@
       <Self
         node={child}
         depth={depth + 1}
+        movePath={[...movePath, { from: child.moves[0].uci.slice(0,2), to: child.moves[0].uci.slice(2,4) }]}
         {loadingNode}
         onToggle={onToggle}
       />

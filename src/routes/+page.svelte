@@ -98,7 +98,7 @@
   </h1>
   <div class="flex flex-col-reverse lg:flex-row flex-1 min-h-0 w-full max-w-6xl justify-center items-stretch gap-6 md:gap-8">
     <!-- Controls column (now includes OpeningBrowser below buttons) -->
-    <div class="w-full lg:w-48 flex-shrink-0 mb-4 lg:mb-0 flex flex-col gap-4 overflow-hidden">
+    <div class="w-full lg:w-60 flex-shrink-0 mb-4 lg:mb-0 flex flex-col gap-4 overflow-hidden">
       <div class="bg-white/80 rounded-xl shadow-lg p-4 flex flex-col gap-4 items-center border border-gray-200">
         <button
           type="button"
@@ -126,7 +126,7 @@
       </div>
     </div>
     <!-- Move history column -->
-    <div class="w-full lg:w-48 flex-shrink-0 mt-4 lg:mt-0">
+    <div class="w-full lg:w-60 flex-shrink-0 mt-4 lg:mt-0">
       <div class="bg-white/80 rounded-xl shadow-lg border border-gray-200 p-4 h-full flex flex-col">
         <MoveHistory />
       </div>

@@ -82,8 +82,8 @@ export async function initializeOpeningTree() {
   }));
 }
 
-async function loadChildren(node: OpeningTreeNode, parentMoves: { from:string; to:string }[]) {
-  const data = await fetchOpeningDataWith429(parentMoves, 10);
+async function loadChildren(node: OpeningTreeNode, movePath: { from:string; to:string }[]) {
+  const data = await fetchOpeningDataWith429(movePath, 10);
   if (!data) return;
   node.children = data.moves.map(m => ({
     name: m.opening?.name || m.san,
@@ -100,26 +100,11 @@ function collapse(node: OpeningTreeNode) {
   node.children = [];
 }
 
-function getPathMoves(node: OpeningTreeNode, depth: number) {
-  // walk down the tree to collect the first `depth+1` moves
-  let path: {from:string;to:string}[] = [];
-  let currList = openingStore.openingTree;
-  for (let i = 0; i <= depth; i++) {
-    const nd = currList.find(n => n === node || n.children?.includes(node));
-    if (!nd) break;
-    const uci = nd.moves[0]?.uci || '';
-    path.push({ from: uci.slice(0,2), to: uci.slice(2,4) });
-    currList = nd.children!;
-  }
-  return path;
-}
-
-export async function toggleNode(node: OpeningTreeNode, depth: number) {
+export async function toggleNode(node: OpeningTreeNode, movePath: { from:string; to:string }[]) {
   if (node.expanded) {
     collapse(node);
   } else {
-    const parentMoves = getPathMoves(node, depth);
-    await loadChildren(node, parentMoves);
+    await loadChildren(node, movePath);
   }
 }
 
