@@ -85,14 +85,14 @@ export function clearOpeningPracticeSelection() {
 }
 
 /**
- * Load random variations for practice session
+ * Load strategic variations for practice session based on move popularity
  */
 export async function loadPracticeVariations(selectedOpening: SelectedOpening, depth: number, count: number): Promise<PracticeVariation[]> {
   const variations: PracticeVariation[] = [];
   
   try {
     for (let i = 0; i < count; i++) {
-      const variation = await generateRandomVariation(selectedOpening, depth);
+      const variation = await generateStrategicVariation(selectedOpening, depth, i);
       if (variation) {
         variations.push({
           id: generateId(),
@@ -116,14 +116,20 @@ export async function loadPracticeVariations(selectedOpening: SelectedOpening, d
 }
 
 /**
- * Generate a random variation starting from the selected opening sequence
+ * Generate a strategic variation starting from the selected opening sequence
+ * @param selectedOpening The base opening sequence
+ * @param depth Target depth for the variation
+ * @param variationIndex Which variation this is (0=first, 1=second, etc.)
  */
-async function generateRandomVariation(selectedOpening: SelectedOpening, depth: number): Promise<LichessOpeningMove[] | null> {
+async function generateStrategicVariation(selectedOpening: SelectedOpening, depth: number, variationIndex: number): Promise<LichessOpeningMove[] | null> {
   const moves: LichessOpeningMove[] = [...selectedOpening.moves]; // Start with the base sequence
   let currentMoves: { from: string; to: string }[] = moves.map(m => ({
     from: m.uci.slice(0, 2),
     to: m.uci.slice(2, 4)
   }));
+  
+  let hasDiverged = false; // Track if this variation has already diverged from the main line
+  let targetIndex = variationIndex; // The move index we're trying to use for divergence
   
   // Continue generating moves up to depth
   for (let i = moves.length; i < depth; i++) {
@@ -133,12 +139,41 @@ async function generateRandomVariation(selectedOpening: SelectedOpening, depth: 
         break; // No more moves available
       }
       
-      // Randomly select a move from available options
-      const randomMove = response.moves[Math.floor(Math.random() * response.moves.length)];
-      moves.push(randomMove);
+      let selectedMove: LichessOpeningMove;
+      
+      // Variation 0 always uses the most popular move
+      if (variationIndex === 0) {
+        selectedMove = response.moves[0];
+      }
+      // Other variations try to diverge at the first opportunity
+      else if (!hasDiverged) {
+        // Try to use the move at our target index
+        if (response.moves.length > targetIndex) {
+          selectedMove = response.moves[targetIndex];
+          hasDiverged = true;
+        } else {
+          // Not enough moves available to diverge at this position
+          // Use the highest available index (going "one level deeper")
+          const maxAvailableIndex = response.moves.length - 1;
+          if (maxAvailableIndex > 0) {
+            selectedMove = response.moves[maxAvailableIndex];
+            // Reduce target index for next opportunity to maintain some divergence
+            targetIndex = Math.max(1, targetIndex - 1);
+          } else {
+            // Only one move available, use it
+            selectedMove = response.moves[0];
+          }
+        }
+      }
+      // After diverging, always use the most popular move
+      else {
+        selectedMove = response.moves[0];
+      }
+      
+      moves.push(selectedMove);
       currentMoves.push({
-        from: randomMove.uci.slice(0, 2),
-        to: randomMove.uci.slice(2, 4)
+        from: selectedMove.uci.slice(0, 2),
+        to: selectedMove.uci.slice(2, 4)
       });
       
       // Small delay to respect API rate limits
@@ -204,12 +239,44 @@ export function playOpponentMove() {
   const session = practiceStore.session;
   if (!session.isActive || session.variations.length === 0) return;
   
-  const currentVariation = session.variations[session.currentVariationIndex];
-  if (!currentVariation || currentVariation.completed) return;
+  // Find the current active variation
+  let currentVariation = session.variations[session.currentVariationIndex];
+  
+  // If current variation is completed, try to find the next available one
+  if (!currentVariation || currentVariation.completed) {
+    const nextAvailableIndex = findNextAvailableVariation(session.variations, session.currentVariationIndex);
+    
+    if (nextAvailableIndex === -1) {
+      // All variations completed
+      handleAllVariationsCompleted();
+      return;
+    }
+    
+    // Switch to the next available variation
+    session.currentVariationIndex = nextAvailableIndex;
+    currentVariation = session.variations[nextAvailableIndex];
+    
+    // Reset the board to replay the new variation from the beginning
+    resetGameToVariationStart(currentVariation);
+    return;
+  }
   
   const nextMoveIndex = Math.floor(gameState.moveHistory.length);
   if (nextMoveIndex >= currentVariation.moves.length) {
     currentVariation.completed = true;
+    
+    // Try to switch to next variation
+    const nextAvailableIndex = findNextAvailableVariation(session.variations, session.currentVariationIndex);
+    
+    if (nextAvailableIndex === -1) {
+      // All variations completed
+      handleAllVariationsCompleted();
+      return;
+    }
+    
+    // Switch to the next available variation
+    session.currentVariationIndex = nextAvailableIndex;
+    resetGameToVariationStart(session.variations[nextAvailableIndex]);
     return;
   }
   
@@ -217,34 +284,88 @@ export function playOpponentMove() {
   const from = move.uci.slice(0, 2) as Position;
   const to = move.uci.slice(2, 4) as Position;
   
-  // Convert to board positions
-  const fromPos = from;
-  const toPos = to;
-  
-  makeMove(fromPos, toPos);
+  makeMove(from, to);
   session.userTurn = true;
 }
 
 /**
- * Validate user move against current variations
+ * Find the next available (non-completed) variation after the current index
+ */
+function findNextAvailableVariation(variations: PracticeVariation[], currentIndex: number): number {
+  // Check variations after current index
+  for (let i = currentIndex + 1; i < variations.length; i++) {
+    if (!variations[i].completed) {
+      return i;
+    }
+  }
+  
+  // Check variations before current index (cycle back)
+  for (let i = 0; i < currentIndex; i++) {
+    if (!variations[i].completed) {
+      return i;
+    }
+  }
+  
+  return -1; // All variations completed
+}
+
+/**
+ * Handle when all variations are completed
+ */
+function handleAllVariationsCompleted() {
+  practiceStore.session.isActive = false;
+  practiceStore.session.error = "Practice session completed!";
+  
+  // Clear the error message after a longer delay since it's a success message
+  setTimeout(() => {
+    practiceStore.session.error = null;
+  }, 5000);
+}
+
+/**
+ * Reset the game to the start of a new variation
+ */
+function resetGameToVariationStart(variation: PracticeVariation) {
+  resetGame();
+  
+  // Play all moves from the selected opening base sequence
+  if (practiceStore.session.selectedOpening) {
+    for (const move of practiceStore.session.selectedOpening.moves) {
+      const from = move.uci.slice(0, 2) as Position;
+      const to = move.uci.slice(2, 4) as Position;
+      makeMove(from, to);
+    }
+  }
+  
+  // If user is playing black, play the first move of the variation
+  if (gameState.boardOrientation === 'black' && variation.moves.length > practiceStore.session.selectedOpening!.moves.length) {
+    const nextMoveIndex = practiceStore.session.selectedOpening!.moves.length;
+    const move = variation.moves[nextMoveIndex];
+    const from = move.uci.slice(0, 2) as Position;
+    const to = move.uci.slice(2, 4) as Position;
+    makeMove(from, to);
+  }
+  
+  practiceStore.session.userTurn = true;
+}
+
+/**
+ * Validate user move against the current active variation
  */
 export function validatePracticeMove(from: Position, to: Position): boolean {
   const session = practiceStore.session;
   if (!session.isActive || session.variations.length === 0) return false;
   
+  const currentVariation = session.variations[session.currentVariationIndex];
+  if (!currentVariation || currentVariation.completed) return false;
+  
   const userMoveUci = from + to;
   const nextMoveIndex = Math.floor(gameState.moveHistory.length);
   
-  // Check if this move matches any of the active variations
-  for (const variation of session.variations) {
-    if (variation.completed) continue;
-    
-    if (nextMoveIndex < variation.moves.length) {
-      const expectedMove = variation.moves[nextMoveIndex];
-      if (expectedMove.uci === userMoveUci || expectedMove.uci.startsWith(userMoveUci)) {
-        return true;
-      }
-    }
+  // Check if this move matches the expected move in the current variation
+  if (nextMoveIndex < currentVariation.moves.length) {
+    const expectedMove = currentVariation.moves[nextMoveIndex];
+    return expectedMove.uci === userMoveUci || expectedMove.uci.startsWith(userMoveUci);
   }
   
   return false;
