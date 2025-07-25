@@ -5,15 +5,12 @@
   import type { Position, ChessPiece, PieceType } from '$lib/types';
   import { generateBoardSquares, getPieceAt } from '$lib/utils/boardUtils';
   import { getLegalMoves } from '$lib/utils/moveLogic';
-  import { gameState, makeMove } from '$lib/store.svelte';
+  import { gameState, makeMove } from '$lib/gameStore.svelte';
+  import { practiceStore, handlePracticeMove } from '$lib/store/practiceStore.svelte';
   import PromotionModal from '$lib/components/PromotionModal.svelte';
   
   let { boardSize = 400 } = $props();
   let boardRef: HTMLElement | null = $state(null);
-
-  function squares() {
-    return generateBoardSquares(gameState.boardOrientation);
-  }
 
   // Drag-and-drop state (pointer events based)
   let dragging = $state(false);
@@ -22,14 +19,41 @@
   let pointerY = $state(0);
   let pointerDownPosition: { x: number; y: number } | null = $state(null);
   const DRAG_THRESHOLD = 5; // px
+
+  function squares() {
+    return generateBoardSquares(gameState.boardOrientation);
+  }
   
   // Helper: get piece for a square
   function getPieceForSquare(square: any) {
     return getPieceAt(gameState.board, square.position);
   }
 
+  // Check if moves are allowed (either not in practice or it's user's turn)
+  function canMakeMove(): boolean {
+    if (!practiceStore.session.isActive) {
+      return true; // Regular game, moves allowed
+    }
+    return practiceStore.session.userTurn; // Practice mode, only if it's user's turn
+  }
+
+  // Execute a move (practice-aware)
+  function executeMove(from: Position, to: Position, promotionPiece?: PieceType) {
+    if (!canMakeMove()) return;
+    
+    if (practiceStore.session.isActive) {
+      // Use practice move validation
+      handlePracticeMove(from, to, promotionPiece);
+    } else {
+      // Regular move
+      makeMove(from, to, promotionPiece);
+    }
+  }
+
   // Handle square click: select or move
   function handleSquareClick(position: Position) {
+    if (!canMakeMove()) return; // Don't allow selection during opponent's turn in practice
+    
     const selected = gameState.selectedPiece;
     const clickedPiece = getPieceAt(gameState.board, position);
     if (!selected) {
@@ -47,7 +71,7 @@
       }
       // If clicking a legal move, move the piece
       if (gameState.legalMoves.includes(position)) {
-        makeMove(selected, position);
+        executeMove(selected, position);
         gameState.selectedPiece = null;
         gameState.legalMoves = [];
       } else {
@@ -66,6 +90,8 @@
 
   // Handle user picking up a piece
   function handlePointerDown(e: PointerEvent, position: Position) {
+    if (!canMakeMove()) return; // Don't allow drag during opponent's turn in practice
+    
     const piece = getPieceAt(gameState.board, position);
     if (piece && piece.color === gameState.currentPlayer) {
       pointerDownPosition = { x: e.clientX, y: e.clientY };
@@ -121,7 +147,7 @@
           pos = `${files[7 - col]}${ranks[row]}`;
         }
         if (gameState.legalMoves.includes(pos)) {
-          makeMove(draggedPiece.origin, pos);
+          executeMove(draggedPiece.origin, pos);
         }
       }
     }
@@ -134,7 +160,7 @@
 
   function handlePromotionSelect(piece: PieceType) {
     if (gameState.pendingPromotion) {
-      makeMove(gameState.pendingPromotion.from, gameState.pendingPromotion.to, piece);
+      executeMove(gameState.pendingPromotion.from, gameState.pendingPromotion.to, piece);
     }
   }
 

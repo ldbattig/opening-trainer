@@ -1,6 +1,7 @@
 <svelte:options runes={true} />
 <script lang="ts">
-  import { gameState, navigationState, goToPreviousMove, goToNextMove, goToMoveIndex } from '$lib/store.svelte';
+  import { gameState, navigationState, goToPreviousMove, goToNextMove, goToMoveIndex } from '$lib/gameStore.svelte';
+  import { ChevronLeft, ChevronRight } from '@lucide/svelte';
 </script>
 
 <div class="w-full h-full max-h-64 overflow-y-auto bg-white/90 border border-gray-200 rounded-xl shadow-inner p-2">
@@ -10,14 +11,18 @@
       onclick={goToPreviousMove}
       disabled={navigationState.currentMoveIndex === 0}
       aria-label="Previous move"
-    >&#8592;</button>
+    >
+      <ChevronLeft size="14" />
+    </button>
     <span class="text-xs text-gray-500">Move {navigationState.currentMoveIndex} / {gameState.moveHistory.length}</span>
     <button
       class="px-2 py-1 rounded bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold disabled:opacity-50"
       onclick={goToNextMove}
       disabled={navigationState.currentMoveIndex === gameState.moveHistory.length}
       aria-label="Next move"
-    >&#8594;</button>
+    >
+      <ChevronRight size="14" />
+    </button>
   </div>
   {#if gameState.moveHistory.length === 0}
     <div class="flex flex-col items-center justify-center h-24 text-gray-400 text-sm select-none">

@@ -1,8 +1,9 @@
 <script lang="ts">
   import Board from '$lib/components/Board.svelte';
-  import { goToNextMove, goToPreviousMove, resetGame, toggleBoardOrientation } from '$lib/store.svelte';
+  import { goToNextMove, goToPreviousMove, resetGame, toggleBoardOrientation } from '$lib/gameStore.svelte';
   import MoveHistory from '$lib/components/MoveHistory.svelte';
   import OpeningBrowser from '$lib/components/OpeningBrowser.svelte';
+  import PracticeConfig from '$lib/components/PracticeConfig.svelte';
   import { onMount } from 'svelte';
 
   // Heading text
@@ -39,7 +40,7 @@
     const isMobile = vw < 640;
     const isTablet = vw >= 640 && vw < 1024;
 
-    // “floor” sizes at each breakpoint
+    // "floor" sizes at each breakpoint
     const minSize = isMobile
       ? 240
       : isTablet
@@ -97,24 +98,9 @@
     {/each}
   </h1>
   <div class="flex flex-col-reverse lg:flex-row flex-1 min-h-0 w-full max-w-6xl justify-center items-stretch gap-6 md:gap-8">
-    <!-- Controls column (now includes OpeningBrowser below buttons) -->
+    <!-- Controls column (now includes PracticeConfig and OpeningBrowser below buttons) -->
     <div class="w-full lg:w-60 flex-shrink-0 mb-4 lg:mb-0 flex flex-col gap-4 overflow-hidden">
-      <div class="bg-white/80 rounded-xl shadow-lg p-4 flex flex-col gap-4 items-center border border-gray-200">
-        <button
-          type="button"
-          class="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-900 transition-colors w-full font-semibold shadow"
-          onclick={toggleBoardOrientation}
-        >
-          Flip Board
-        </button>
-        <button
-          type="button"
-          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-800 transition-colors w-full font-semibold shadow"
-          onclick={resetGame}
-        >
-          New Game
-        </button>
-      </div>
+      <PracticeConfig />
       <div class="flex-1 min-h-0 overflow-y-auto">
         <OpeningBrowser />
       </div>
@@ -127,6 +113,22 @@
     </div>
     <!-- Move history column -->
     <div class="w-full lg:w-60 flex-shrink-0 mt-4 lg:mt-0">
+      <div class="bg-white/80 rounded-xl shadow-lg p-4 flex flex-col gap-4 items-center border border-gray-200 mb-4">
+        <button
+          type="button"
+          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-800 transition-colors w-full font-semibold shadow"
+          onclick={resetGame}
+        >
+          New Game
+        </button>
+        <button
+          type="button"
+          class="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-900 transition-colors w-full font-semibold shadow"
+          onclick={toggleBoardOrientation}
+        >
+          Flip Board
+        </button>
+      </div>
       <div class="bg-white/80 rounded-xl shadow-lg border border-gray-200 p-4 h-full flex flex-col">
         <MoveHistory />
       </div>

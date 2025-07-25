@@ -1,7 +1,7 @@
 <svelte:options runes={true} />
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { openingStore, initializeOpeningTree, toggleNode } from '$lib/store.svelte';
+  import { openingStore, initializeOpeningTree, toggleNode } from '$lib/store/openingStore.svelte';
   import type { OpeningTreeNode } from '$lib/types';
   import OpeningTreeNodeView from './OpeningTreeNodeView.svelte';
 
@@ -36,7 +36,7 @@
         <OpeningTreeNodeView
           {node}
           depth={0}
-          movePath={[{ from: node.moves[0].uci.slice(0,2), to: node.moves[0].uci.slice(2,4) }]}
+          movePath={[]}
           {loadingNode}
           onToggle={handleToggle}
         />

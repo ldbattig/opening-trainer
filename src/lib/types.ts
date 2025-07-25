@@ -92,6 +92,7 @@ export interface OpeningTreeNode {
   moves: LichessOpeningMove[];
   children?: OpeningTreeNode[];
   expanded?: boolean;
+  selected?: boolean;
 }
 
 // Store variables for opening data
@@ -100,4 +101,39 @@ export interface OpeningStore {
   selectedOpening: OpeningTreeNode | null;
   cache: Record<string, LichessOpeningResponse>;
   rateLimited: boolean;
+}
+
+// Practice session types
+export interface PracticeVariation {
+  id: string;
+  moves: LichessOpeningMove[];
+  currentMoveIndex: number;
+  completed: boolean;
+}
+
+export interface PracticeConfiguration {
+  depth: number; // 5-20 moves
+  variationCount: number; // 1-5 variations
+}
+
+export interface SelectedOpening {
+  name: string;
+  eco: string;
+  moves: LichessOpeningMove[]; // The sequence of moves up to the selected node
+  displayName: string; // Friendly display name for UI
+}
+
+export interface PracticeSession {
+  isActive: boolean;
+  configuration: PracticeConfiguration;
+  selectedOpening: SelectedOpening | null;
+  variations: PracticeVariation[];
+  currentVariationIndex: number;
+  userTurn: boolean;
+  loading: boolean;
+  error: string | null;
+}
+
+export interface PracticeStore {
+  session: PracticeSession;
 } 

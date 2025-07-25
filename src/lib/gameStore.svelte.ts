@@ -1,13 +1,9 @@
-import type { Position } from "./types";
-import type { BoardState, Move, PieceType, PieceColor, OpeningStore, LichessOpeningResponse, OpeningTreeNode } from "./types";
-import { coordinatesToPosition, createInitialGameState, getInitialBoard, getPieceAt, getPiecesByColor, positionToCoordinates, setPieceAt, moveListToCoordinateNotation } from "./utils/boardUtils";
-import { fetchJson } from "./utils/httpUtils";
+import type { Position, BoardState, Move, PieceType, PieceColor } from "./types";
+import { coordinatesToPosition, createInitialGameState, getInitialBoard, getPieceAt, getPiecesByColor, positionToCoordinates, setPieceAt } from "./utils/boardUtils";
 import { createMove, updateMoveWithGameStatus } from "./utils/moveHistoryUtils";
 import { getLegalMoves, isKingInCheck } from "./utils/moveLogic";
 
-// Store variables
-
-// state related to board, pieces, and game
+// Game state
 export const gameState = $state({
   ...createInitialGameState(),
   enPassantTarget: null as Position | null,
@@ -17,98 +13,12 @@ export const gameState = $state({
   highlightedSquares: [] as Position[],
 });
 
-// current index in the move list
+// Navigation state
 export const navigationState = $state({
   currentMoveIndex: 0 // 0 = initial position, 1 = after first move, etc.
 });
 
-// state for the opening browser and lichess api
-export const openingStore: OpeningStore = $state({
-  openingTree: [],
-  selectedOpening: null,
-  cache: {},
-  rateLimited: false,
-});
-
-/**
- * Fetch opening data from Lichess API and cache it
- * @param moveList - array of {from, to} moves
- * @param moves - number of variations to return
- * @returns LichessOpeningResponse
- */
-export async function fetchOpeningData(moveList: { from: string; to: string }[], moves: number = 10): Promise<LichessOpeningResponse> {
-  const coordMoves = moveListToCoordinateNotation(moveList);
-  const playParam = coordMoves.join(',');
-  const cacheKey = `${playParam}|${moves}`;
-  if (openingStore.cache[cacheKey]) {
-    return openingStore.cache[cacheKey];
-  }
-  const url = `https://explorer.lichess.ovh/masters?play=${playParam}&moves=${moves}&topGames=0`;
-  const data = await fetchJson<LichessOpeningResponse>(url);
-  openingStore.cache[cacheKey] = data;
-  return data;
-}
-
-/**
- * Fetch opening data with 429 error handling (rate limiting)
- * @param moveList - array of {from, to} moves
- * @param moves - number of variations to return
- * @returns LichessOpeningResponse
- */
-export async function fetchOpeningDataWith429(moveList: { from: string; to: string }[], moves: number = 10): Promise<LichessOpeningResponse | null> {
-  try {
-    return await fetchOpeningData(moveList, moves);
-  } catch (e: unknown) {
-    if (e instanceof Error && e.message.includes('429')) {
-      // Set a UI flag or store variable for rate limit
-      openingStore.rateLimited = true;
-      // Optionally, set a timeout to clear the flag after 1 minute
-      setTimeout(() => { openingStore.rateLimited = false; }, 60000);
-      return null;
-    }
-    throw e;
-  }
-}
-
-export async function initializeOpeningTree() {
-  const data = await fetchOpeningDataWith429([], 50);
-  if (!data) return;
-  openingStore.openingTree = data.moves.map(m => ({
-    name: m.opening?.name || m.san,
-    eco:  m.opening?.eco  || '',
-    moves:[m],
-    children: [],
-    expanded: false,
-  }));
-}
-
-async function loadChildren(node: OpeningTreeNode, movePath: { from:string; to:string }[]) {
-  const data = await fetchOpeningDataWith429(movePath, 10);
-  if (!data) return;
-  node.children = data.moves.map(m => ({
-    name: m.opening?.name || m.san,
-    eco:  m.opening?.eco  || '',
-    moves:[m],
-    children: [],
-    expanded: false,
-  }));
-  node.expanded = true;
-}
-
-function collapse(node: OpeningTreeNode) {
-  node.expanded = false;
-  node.children = [];
-}
-
-export async function toggleNode(node: OpeningTreeNode, movePath: { from:string; to:string }[]) {
-  if (node.expanded) {
-    collapse(node);
-  } else {
-    await loadChildren(node, movePath);
-  }
-}
-
-// Store functions
+// Game functions
 export function resetGame() {
   gameState.board = getInitialBoard();
   gameState.currentPlayer = 'white';
@@ -175,8 +85,8 @@ export function makeMove(from: Position, to: Position, promotionPiece?: PieceTyp
 
   // Handle castling: move rook as well
   if (move.isCastling) {
-    const [fromRow, fromCol] = positionToCoordinates(from);
-    const [toRow, toCol] = positionToCoordinates(to);
+    const [fromRow] = positionToCoordinates(from);
+    const [, toCol] = positionToCoordinates(to);
     if (toCol === 6) { // King-side
       const rookFrom = coordinatesToPosition(fromRow, 7);
       const rookTo = coordinatesToPosition(fromRow, 5);
@@ -314,8 +224,8 @@ function applyMoveToBoard(state: typeof gameState, move: Move) {
   setPieceAt(board, move.from, null);
   // Castling
   if (move.isCastling) {
-    const [fromRow, fromCol] = positionToCoordinates(move.from);
-    const [toRow, toCol] = positionToCoordinates(move.to);
+    const [fromRow] = positionToCoordinates(move.from);
+    const [, toCol] = positionToCoordinates(move.to);
     if (toCol === 6) { // King-side
       const rookFrom = coordinatesToPosition(fromRow, 7);
       const rookTo = coordinatesToPosition(fromRow, 5);
@@ -346,4 +256,4 @@ function applyMoveToBoard(state: typeof gameState, move: Move) {
   state.highlightedSquares = [move.from, move.to];
   // Switch player
   state.currentPlayer = state.currentPlayer === 'white' ? 'black' : 'white';
-}
+} 
