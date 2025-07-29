@@ -185,6 +185,8 @@
           isSelected={!!(gameState.selectedPiece == square.position)}
           isLegalMove={!!gameState.legalMoves && gameState.legalMoves.includes(square.position)}
           isLastMove={!!isLastMove(square.position)}
+          isHintFrom={practiceStore.session.hintFromSquare === square.position}
+          isHintTo={practiceStore.session.hintToSquare === square.position}
           piece={getPieceForSquare(square) ?? null}
           boardOrientation={gameState.boardOrientation}
           currentPlayer={gameState.currentPlayer}

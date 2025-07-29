@@ -133,6 +133,9 @@ export interface PracticeSession {
   loading: boolean;
   error: string | null;
   successMessage: string | null;
+  consecutiveWrongMoves: number;
+  hintFromSquare: Position | null;
+  hintToSquare: Position | null;
 }
 
 export interface PracticeStore {

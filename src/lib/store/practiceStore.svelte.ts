@@ -18,6 +18,9 @@ export const practiceStore: PracticeStore = $state({
     loading: false,
     error: null,
     successMessage: null,
+    consecutiveWrongMoves: 0,
+    hintFromSquare: null,
+    hintToSquare: null,
   },
 });
 
@@ -39,6 +42,9 @@ export function resetPracticeSession() {
   practiceStore.session.loading = false;
   practiceStore.session.error = null;
   practiceStore.session.successMessage = null;
+  practiceStore.session.consecutiveWrongMoves = 0;
+  practiceStore.session.hintFromSquare = null;
+  practiceStore.session.hintToSquare = null;
   resetGame();
 }
 
@@ -266,6 +272,7 @@ export function playOpponentMove() {
     
     // Reset the board to replay the new variation from the beginning
     resetGame();
+    clearHintsAndResetCounter();
     session.userTurn = true;
     return;
   }
@@ -286,6 +293,7 @@ export function playOpponentMove() {
     // Switch to the next available variation
     session.currentVariationIndex = nextAvailableIndex;
     resetGame();
+    clearHintsAndResetCounter();
     session.userTurn = true;
     return;
   }
@@ -295,6 +303,7 @@ export function playOpponentMove() {
   const to = move.uci.slice(2, 4) as Position;
   
   makeMove(from, to);
+  clearHintsAndResetCounter();
   session.userTurn = true;
 }
 
@@ -330,6 +339,15 @@ function handleAllVariationsCompleted() {
   setTimeout(() => {
     practiceStore.session.successMessage = null;
   }, 5000);
+}
+
+/**
+ * Clear hints and reset wrong move counter
+ */
+function clearHintsAndResetCounter() {
+  practiceStore.session.consecutiveWrongMoves = 0;
+  practiceStore.session.hintFromSquare = null;
+  practiceStore.session.hintToSquare = null;
 }
 
 /**
@@ -399,6 +417,7 @@ export function handlePracticeMove(from: Position, to: Position, promotionPiece?
       } else {
         // Reset the board to starting position
         resetGame();
+        clearHintsAndResetCounter();
         
         session.userTurn = true;
       }
@@ -409,6 +428,9 @@ export function handlePracticeMove(from: Position, to: Position, promotionPiece?
   }
   
   if (validatePracticeMove(from, to)) {
+    // Correct move - clear hints and reset counter
+    clearHintsAndResetCounter();
+    
     makeMove(from, to, promotionPiece);
     practiceStore.session.userTurn = false;
     
@@ -419,9 +441,31 @@ export function handlePracticeMove(from: Position, to: Position, promotionPiece?
     
     return true;
   } else {
-    // Invalid move - show error
-    practiceStore.session.error = "That move isn't in this opening—try again.";
+    // Invalid move - increment counter and provide progressive feedback
+    practiceStore.session.consecutiveWrongMoves++;
     practiceStore.session.successMessage = null;
+    
+    const currentVariation = session.variations[session.currentVariationIndex];
+    const nextMoveIndex = Math.floor(gameState.moveHistory.length);
+    const expectedMove = currentVariation.moves[nextMoveIndex];
+    
+    if (practiceStore.session.consecutiveWrongMoves === 1) {
+      // First wrong move: Only show error message
+      practiceStore.session.error = "That move isn't in this opening—try again.";
+      practiceStore.session.hintFromSquare = null;
+      practiceStore.session.hintToSquare = null;
+    } else if (practiceStore.session.consecutiveWrongMoves === 2) {
+      // Second wrong move: Show error + highlight piece to move
+      practiceStore.session.error = "That move isn't in this opening—the highlighted piece should move.";
+      practiceStore.session.hintFromSquare = expectedMove.uci.slice(0, 2) as Position;
+      practiceStore.session.hintToSquare = null;
+    } else {
+      // Third+ wrong move: Show error + highlight both from and to squares
+      practiceStore.session.error = "That move isn't in this opening—move the highlighted piece to the highlighted square.";
+      practiceStore.session.hintFromSquare = expectedMove.uci.slice(0, 2) as Position;
+      practiceStore.session.hintToSquare = expectedMove.uci.slice(2, 4) as Position;
+    }
+    
     setTimeout(() => {
       practiceStore.session.error = null;
     }, 3000);

@@ -8,6 +8,8 @@
     isSelected,
     isLegalMove,
     isLastMove,
+    isHintFrom,
+    isHintTo,
     piece,
     boardOrientation,
     currentPlayer,
@@ -20,6 +22,8 @@
     isSelected: boolean;
     isLegalMove: boolean;
     isLastMove: boolean;
+    isHintFrom: boolean;
+    isHintTo: boolean;
     piece: ChessPiece | null;
     boardOrientation: PieceColor;
     currentPlayer: PieceColor;
@@ -36,7 +40,7 @@
 
 <button
   type="button"
-  class="relative flex items-center justify-center transition-opacity duration-200 {isSelected ? 'bg-blue-200': ''} {square.isLight ? 'bg-[#f0d9b5]' : 'bg-[#b58863]'} { isLastMove ? 'bg-yellow-100 ring-inset' : '' } hover:opacity-80 cursor-pointer border-0 p-0 m-0 w-full h-full"
+  class="relative flex items-center justify-center transition-opacity duration-200 {isSelected ? 'bg-blue-200': ''} {square.isLight ? 'bg-[#f0d9b5]' : 'bg-[#b58863]'} { isLastMove ? 'bg-yellow-100 ring-inset' : '' } {isHintFrom ? 'ring-4 ring-orange-400 ring-inset' : ''} {isHintTo ? 'ring-4 ring-green-400 ring-inset' : ''} hover:opacity-80 cursor-pointer border-0 p-0 m-0 w-full h-full"
   data-position={square.position}
   data-file={square.file}
   data-rank={square.rank}
