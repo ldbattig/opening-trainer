@@ -115,6 +115,13 @@
     </div>
   {/if}
 
+  <!-- Success Message Display -->
+  {#if practiceStore.session.successMessage}
+    <div class="mt-2 p-2 bg-green-50 border border-green-200 rounded-lg">
+      <div class="text-xs text-green-800">{practiceStore.session.successMessage}</div>
+    </div>
+  {/if}
+
   <!-- Practice Status -->
   {#if practiceStore.session.isActive}
     <div class="mt-3 p-2 bg-green-50 border border-green-200 rounded-lg">

@@ -17,6 +17,7 @@ export const practiceStore: PracticeStore = $state({
     userTurn: true,
     loading: false,
     error: null,
+    successMessage: null,
   },
 });
 
@@ -37,6 +38,7 @@ export function resetPracticeSession() {
   practiceStore.session.userTurn = true;
   practiceStore.session.loading = false;
   practiceStore.session.error = null;
+  practiceStore.session.successMessage = null;
   resetGame();
 }
 
@@ -179,7 +181,6 @@ async function generateStrategicVariation(selectedOpening: SelectedOpening, dept
       // Small delay to respect API rate limits
       await new Promise(resolve => setTimeout(resolve, 150));
     } catch (error) {
-      console.error('Error fetching moves for variation:', error);
       break;
     }
   }
@@ -193,11 +194,13 @@ async function generateStrategicVariation(selectedOpening: SelectedOpening, dept
 export async function startPracticeSession() {
   if (!practiceStore.session.selectedOpening) {
     practiceStore.session.error = 'Please select an opening first';
+    practiceStore.session.successMessage = null;
     return;
   }
   
   practiceStore.session.loading = true;
   practiceStore.session.error = null;
+  practiceStore.session.successMessage = null;
   
   try {
     const variations = await loadPracticeVariations(
@@ -208,6 +211,7 @@ export async function startPracticeSession() {
     
     if (variations.length === 0) {
       practiceStore.session.error = 'Could not load any variations for this opening';
+      practiceStore.session.successMessage = null;
       practiceStore.session.loading = false;
       return;
     }
@@ -227,6 +231,7 @@ export async function startPracticeSession() {
     
   } catch (error) {
     practiceStore.session.error = error instanceof Error ? error.message : 'Failed to start practice session';
+    practiceStore.session.successMessage = null;
   } finally {
     practiceStore.session.loading = false;
   }
@@ -237,7 +242,10 @@ export async function startPracticeSession() {
  */
 export function playOpponentMove() {
   const session = practiceStore.session;
-  if (!session.isActive || session.variations.length === 0) return;
+  
+  if (!session.isActive || session.variations.length === 0) {
+    return;
+  }
   
   // Find the current active variation
   let currentVariation = session.variations[session.currentVariationIndex];
@@ -257,7 +265,8 @@ export function playOpponentMove() {
     currentVariation = session.variations[nextAvailableIndex];
     
     // Reset the board to replay the new variation from the beginning
-    resetGameToVariationStart(currentVariation);
+    resetGame();
+    session.userTurn = true;
     return;
   }
   
@@ -276,7 +285,8 @@ export function playOpponentMove() {
     
     // Switch to the next available variation
     session.currentVariationIndex = nextAvailableIndex;
-    resetGameToVariationStart(session.variations[nextAvailableIndex]);
+    resetGame();
+    session.userTurn = true;
     return;
   }
   
@@ -314,39 +324,12 @@ function findNextAvailableVariation(variations: PracticeVariation[], currentInde
  */
 function handleAllVariationsCompleted() {
   practiceStore.session.isActive = false;
-  practiceStore.session.error = "Practice session completed!";
+  practiceStore.session.successMessage = "Practice session completed! All variations done!";
   
-  // Clear the error message after a longer delay since it's a success message
+  // Clear the success message after a longer delay 
   setTimeout(() => {
-    practiceStore.session.error = null;
+    practiceStore.session.successMessage = null;
   }, 5000);
-}
-
-/**
- * Reset the game to the start of a new variation
- */
-function resetGameToVariationStart(variation: PracticeVariation) {
-  resetGame();
-  
-  // Play all moves from the selected opening base sequence
-  if (practiceStore.session.selectedOpening) {
-    for (const move of practiceStore.session.selectedOpening.moves) {
-      const from = move.uci.slice(0, 2) as Position;
-      const to = move.uci.slice(2, 4) as Position;
-      makeMove(from, to);
-    }
-  }
-  
-  // If user is playing black, play the first move of the variation
-  if (gameState.boardOrientation === 'black' && variation.moves.length > practiceStore.session.selectedOpening!.moves.length) {
-    const nextMoveIndex = practiceStore.session.selectedOpening!.moves.length;
-    const move = variation.moves[nextMoveIndex];
-    const from = move.uci.slice(0, 2) as Position;
-    const to = move.uci.slice(2, 4) as Position;
-    makeMove(from, to);
-  }
-  
-  practiceStore.session.userTurn = true;
 }
 
 /**
@@ -354,10 +337,16 @@ function resetGameToVariationStart(variation: PracticeVariation) {
  */
 export function validatePracticeMove(from: Position, to: Position): boolean {
   const session = practiceStore.session;
-  if (!session.isActive || session.variations.length === 0) return false;
+  
+  if (!session.isActive || session.variations.length === 0) {
+    return false;
+  }
   
   const currentVariation = session.variations[session.currentVariationIndex];
-  if (!currentVariation || currentVariation.completed) return false;
+  
+  if (!currentVariation || currentVariation.completed) {
+    return false;
+  }
   
   const userMoveUci = from + to;
   const nextMoveIndex = Math.floor(gameState.moveHistory.length);
@@ -365,7 +354,9 @@ export function validatePracticeMove(from: Position, to: Position): boolean {
   // Check if this move matches the expected move in the current variation
   if (nextMoveIndex < currentVariation.moves.length) {
     const expectedMove = currentVariation.moves[nextMoveIndex];
-    return expectedMove.uci === userMoveUci || expectedMove.uci.startsWith(userMoveUci);
+    const isValid = expectedMove.uci === userMoveUci || expectedMove.uci.startsWith(userMoveUci);
+    
+    return isValid;
   }
   
   return false;
@@ -375,7 +366,47 @@ export function validatePracticeMove(from: Position, to: Position): boolean {
  * Handle practice move - called when user makes a move during practice
  */
 export function handlePracticeMove(from: Position, to: Position, promotionPiece?: PieceType): boolean {
-  if (!practiceStore.session.isActive) return false;
+  if (!practiceStore.session.isActive) {
+    return false;
+  }
+  
+  const session = practiceStore.session;
+  const currentVariation = session.variations[session.currentVariationIndex];
+  const nextMoveIndex = Math.floor(gameState.moveHistory.length);
+  
+  // Check if we've reached the end of the current variation
+  if (nextMoveIndex >= currentVariation.moves.length) {
+    // Mark current variation as completed
+    currentVariation.completed = true;
+    
+    // Show success message
+    const completedVariations = session.variations.filter(v => v.completed).length;
+    const totalVariations = session.variations.length;
+    
+    session.successMessage = `Variation ${session.currentVariationIndex + 1} completed! (${completedVariations}/${totalVariations} done)`;
+    
+    // Disable user input temporarily
+    session.userTurn = false;
+    
+    // After a few seconds, reset the board and return to practice selection
+    setTimeout(() => {
+      // Clear the success message
+      session.successMessage = null;
+      
+      // Check if all variations are completed
+      if (completedVariations >= totalVariations) {
+        handleAllVariationsCompleted();
+      } else {
+        // Reset the board to starting position
+        resetGame();
+        
+        session.userTurn = true;
+      }
+    }, 3000); // Wait 3 seconds
+    
+    makeMove(from, to, promotionPiece);
+    return false; // Don't process the move since variation is complete
+  }
   
   if (validatePracticeMove(from, to)) {
     makeMove(from, to, promotionPiece);
@@ -390,6 +421,7 @@ export function handlePracticeMove(from: Position, to: Position, promotionPiece?
   } else {
     // Invalid move - show error
     practiceStore.session.error = "That move isn't in this opening—try again.";
+    practiceStore.session.successMessage = null;
     setTimeout(() => {
       practiceStore.session.error = null;
     }, 3000);

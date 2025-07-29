@@ -132,6 +132,7 @@ export interface PracticeSession {
   userTurn: boolean;
   loading: boolean;
   error: string | null;
+  successMessage: string | null;
 }
 
 export interface PracticeStore {
