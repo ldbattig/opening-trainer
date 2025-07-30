@@ -32,20 +32,49 @@ function generateId(): string {
 }
 
 /**
+ * Helper function to set messages with automatic clearing
+ */
+function setMessage(type: 'error' | 'success', message: string, duration: number = 3000) {
+  if (type === 'error') {
+    practiceStore.session.error = message;
+    practiceStore.session.successMessage = null;
+    setTimeout(() => practiceStore.session.error = null, duration);
+  } else {
+    practiceStore.session.successMessage = message;
+    practiceStore.session.error = null;
+    setTimeout(() => practiceStore.session.successMessage = null, duration);
+  }
+}
+
+/**
+ * Clear hints and reset wrong move counter
+ */
+function clearHintsAndResetCounter() {
+  practiceStore.session.consecutiveWrongMoves = 0;
+  practiceStore.session.hintFromSquare = null;
+  practiceStore.session.hintToSquare = null;
+}
+
+/**
+ * Reset session state and game
+ */
+function resetSessionState() {
+  resetGame();
+  clearHintsAndResetCounter();
+  practiceStore.session.userTurn = true;
+}
+
+/**
  * Reset practice session to initial state
  */
 export function resetPracticeSession() {
   practiceStore.session.isActive = false;
   practiceStore.session.variations = [];
   practiceStore.session.currentVariationIndex = 0;
-  practiceStore.session.userTurn = true;
   practiceStore.session.loading = false;
   practiceStore.session.error = null;
   practiceStore.session.successMessage = null;
-  practiceStore.session.consecutiveWrongMoves = 0;
-  practiceStore.session.hintFromSquare = null;
-  practiceStore.session.hintToSquare = null;
-  resetGame();
+  resetSessionState();
 }
 
 /**
@@ -199,8 +228,7 @@ async function generateStrategicVariation(selectedOpening: SelectedOpening, dept
  */
 export async function startPracticeSession() {
   if (!practiceStore.session.selectedOpening) {
-    practiceStore.session.error = 'Please select an opening first';
-    practiceStore.session.successMessage = null;
+    setMessage('error', 'Please select an opening first');
     return;
   }
   
@@ -216,8 +244,7 @@ export async function startPracticeSession() {
     );
     
     if (variations.length === 0) {
-      practiceStore.session.error = 'Could not load any variations for this opening';
-      practiceStore.session.successMessage = null;
+      setMessage('error', 'Could not load any variations for this opening');
       practiceStore.session.loading = false;
       return;
     }
@@ -236,75 +263,10 @@ export async function startPracticeSession() {
     }
     
   } catch (error) {
-    practiceStore.session.error = error instanceof Error ? error.message : 'Failed to start practice session';
-    practiceStore.session.successMessage = null;
+    setMessage('error', error instanceof Error ? error.message : 'Failed to start practice session');
   } finally {
     practiceStore.session.loading = false;
   }
-}
-
-/**
- * Play the opponent's move from the current variation
- */
-export function playOpponentMove() {
-  const session = practiceStore.session;
-  
-  if (!session.isActive || session.variations.length === 0) {
-    return;
-  }
-  
-  // Find the current active variation
-  let currentVariation = session.variations[session.currentVariationIndex];
-  
-  // If current variation is completed, try to find the next available one
-  if (!currentVariation || currentVariation.completed) {
-    const nextAvailableIndex = findNextAvailableVariation(session.variations, session.currentVariationIndex);
-    
-    if (nextAvailableIndex === -1) {
-      // All variations completed
-      handleAllVariationsCompleted();
-      return;
-    }
-    
-    // Switch to the next available variation
-    session.currentVariationIndex = nextAvailableIndex;
-    currentVariation = session.variations[nextAvailableIndex];
-    
-    // Reset the board to replay the new variation from the beginning
-    resetGame();
-    clearHintsAndResetCounter();
-    session.userTurn = true;
-    return;
-  }
-  
-  const nextMoveIndex = Math.floor(gameState.moveHistory.length);
-  if (nextMoveIndex >= currentVariation.moves.length) {
-    currentVariation.completed = true;
-    
-    // Try to switch to next variation
-    const nextAvailableIndex = findNextAvailableVariation(session.variations, session.currentVariationIndex);
-    
-    if (nextAvailableIndex === -1) {
-      // All variations completed
-      handleAllVariationsCompleted();
-      return;
-    }
-    
-    // Switch to the next available variation
-    session.currentVariationIndex = nextAvailableIndex;
-    resetGame();
-    clearHintsAndResetCounter();
-    session.userTurn = true;
-    return;
-  }
-  
-  const move = currentVariation.moves[nextMoveIndex];
-  const from = move.uci.slice(0, 2) as Position;
-  const to = move.uci.slice(2, 4) as Position;
-  
-  makeMove(from, to);
-  clearHintsAndResetCounter();
-  session.userTurn = true;
 }
 
 /**
@@ -329,25 +291,65 @@ function findNextAvailableVariation(variations: PracticeVariation[], currentInde
 }
 
 /**
+ * Switch to next available variation or handle completion
+ */
+function switchToNextVariationOrComplete(): boolean {
+  const session = practiceStore.session;
+  const nextAvailableIndex = findNextAvailableVariation(session.variations, session.currentVariationIndex);
+  
+  if (nextAvailableIndex === -1) {
+    // All variations completed
+    handleAllVariationsCompleted();
+    return false;
+  }
+  
+  // Switch to the next available variation
+  session.currentVariationIndex = nextAvailableIndex;
+  resetSessionState();
+  return true;
+}
+
+/**
  * Handle when all variations are completed
  */
 function handleAllVariationsCompleted() {
   practiceStore.session.isActive = false;
-  practiceStore.session.successMessage = "Practice session completed! All variations done!";
-  
-  // Clear the success message after a longer delay 
-  setTimeout(() => {
-    practiceStore.session.successMessage = null;
-  }, 5000);
+  setMessage('success', "Practice session completed! All variations done!", 5000);
 }
 
 /**
- * Clear hints and reset wrong move counter
+ * Play the opponent's move from the current variation
  */
-function clearHintsAndResetCounter() {
-  practiceStore.session.consecutiveWrongMoves = 0;
-  practiceStore.session.hintFromSquare = null;
-  practiceStore.session.hintToSquare = null;
+export function playOpponentMove() {
+  const session = practiceStore.session;
+  
+  if (!session.isActive || session.variations.length === 0) {
+    return;
+  }
+  
+  // Find the current active variation
+  let currentVariation = session.variations[session.currentVariationIndex];
+  
+  // If current variation is completed, try to find the next available one
+  if (!currentVariation || currentVariation.completed) {
+    switchToNextVariationOrComplete();
+    return;
+  }
+  
+  const nextMoveIndex = Math.floor(gameState.moveHistory.length);
+  if (nextMoveIndex >= currentVariation.moves.length) {
+    currentVariation.completed = true;
+    switchToNextVariationOrComplete();
+    return;
+  }
+  
+  const move = currentVariation.moves[nextMoveIndex];
+  const from = move.uci.slice(0, 2) as Position;
+  const to = move.uci.slice(2, 4) as Position;
+  
+  makeMove(from, to);
+  clearHintsAndResetCounter();
+  session.userTurn = true;
 }
 
 /**
@@ -381,6 +383,40 @@ export function validatePracticeMove(from: Position, to: Position): boolean {
 }
 
 /**
+ * Handle wrong move with progressive hints
+ */
+function handleWrongMove(expectedMove: LichessOpeningMove) {
+  const session = practiceStore.session;
+  session.consecutiveWrongMoves++;
+  session.successMessage = null;
+  
+  const hintLevels = [
+    {
+      message: "That move isn't in this opening-try again.",
+      fromSquare: null,
+      toSquare: null
+    },
+    {
+      message: "That move isn't in this opening-the highlighted piece should move.",
+      fromSquare: expectedMove.uci.slice(0, 2) as Position,
+      toSquare: null
+    },
+    {
+      message: "That move isn't in this opening-move the highlighted piece to the highlighted square.",
+      fromSquare: expectedMove.uci.slice(0, 2) as Position,
+      toSquare: expectedMove.uci.slice(2, 4) as Position
+    }
+  ];
+  
+  const hintIndex = Math.min(session.consecutiveWrongMoves - 1, hintLevels.length - 1);
+  const hint = hintLevels[hintIndex];
+  
+  session.hintFromSquare = hint.fromSquare;
+  session.hintToSquare = hint.toSquare;
+  setMessage('error', hint.message);
+}
+
+/**
  * Handle practice move - called when user makes a move during practice
  */
 export function handlePracticeMove(from: Position, to: Position, promotionPiece?: PieceType): boolean {
@@ -401,7 +437,7 @@ export function handlePracticeMove(from: Position, to: Position, promotionPiece?
     const completedVariations = session.variations.filter(v => v.completed).length;
     const totalVariations = session.variations.length;
     
-    session.successMessage = `Variation ${session.currentVariationIndex + 1} completed! (${completedVariations}/${totalVariations} done)`;
+    setMessage('success', `Variation ${session.currentVariationIndex + 1} completed! (${completedVariations}/${totalVariations} done)`);
     
     // Disable user input temporarily
     session.userTurn = false;
@@ -415,11 +451,7 @@ export function handlePracticeMove(from: Position, to: Position, promotionPiece?
       if (completedVariations >= totalVariations) {
         handleAllVariationsCompleted();
       } else {
-        // Reset the board to starting position
-        resetGame();
-        clearHintsAndResetCounter();
-        
-        session.userTurn = true;
+        resetSessionState();
       }
     }, 3000); // Wait 3 seconds
     
@@ -442,33 +474,8 @@ export function handlePracticeMove(from: Position, to: Position, promotionPiece?
     return true;
   } else {
     // Invalid move - increment counter and provide progressive feedback
-    practiceStore.session.consecutiveWrongMoves++;
-    practiceStore.session.successMessage = null;
-    
-    const currentVariation = session.variations[session.currentVariationIndex];
-    const nextMoveIndex = Math.floor(gameState.moveHistory.length);
     const expectedMove = currentVariation.moves[nextMoveIndex];
-    
-    if (practiceStore.session.consecutiveWrongMoves === 1) {
-      // First wrong move: Only show error message
-      practiceStore.session.error = "That move isn't in this opening—try again.";
-      practiceStore.session.hintFromSquare = null;
-      practiceStore.session.hintToSquare = null;
-    } else if (practiceStore.session.consecutiveWrongMoves === 2) {
-      // Second wrong move: Show error + highlight piece to move
-      practiceStore.session.error = "That move isn't in this opening—the highlighted piece should move.";
-      practiceStore.session.hintFromSquare = expectedMove.uci.slice(0, 2) as Position;
-      practiceStore.session.hintToSquare = null;
-    } else {
-      // Third+ wrong move: Show error + highlight both from and to squares
-      practiceStore.session.error = "That move isn't in this opening—move the highlighted piece to the highlighted square.";
-      practiceStore.session.hintFromSquare = expectedMove.uci.slice(0, 2) as Position;
-      practiceStore.session.hintToSquare = expectedMove.uci.slice(2, 4) as Position;
-    }
-    
-    setTimeout(() => {
-      practiceStore.session.error = null;
-    }, 3000);
+    handleWrongMove(expectedMove);
     return false;
   }
 } 
