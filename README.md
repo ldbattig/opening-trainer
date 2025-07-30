@@ -1,38 +1,72 @@
-# sv
+# Chess Opening Trainer
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+A chess opening trainer built with Svelte 5 designed to help practice chess openings through interactive practice sessions. Developed using the Lichess masters opening API.
 
-## Creating a project
+## Features
 
-If you're seeing this, you've probably already done this step. Congrats!
+### 🎯 **Opening Practice**
+- Practice specific opening lines with configurable depth (number of moves)
+- Interactive practice mode where the app plays the opponent's moves
+- Real-time move validation with immediate feedback
 
+### ♟️ **Full Chess Interface**
+- Complete chess board with drag-and-drop piece movement
+- Support for all chess rules including castling, en passant, and pawn promotion
+- Check and checkmate detection
+- Flip board orientation to practice from both perspectives
+- Move history with algebraic notation
+
+### 📊 **Lichess Integration**
+- Fetches master-level opening data from Lichess API
+- Multiple variations for each opening line
+
+## Requirements
+
+- **Node.js 22** or higher
+- npm, pnpm, or yarn package manager
+
+## Getting Started
+
+### Installation
+
+1. Clone the repository:
 ```bash
-# create a new project in the current directory
-npx sv create
-
-# create a new project in my-app
-npx sv create my-app
+git clone <repository-url>
+cd opening-trainer
 ```
 
-## Developing
+2. Install dependencies:
+```bash
+npm install
+# or
+pnpm install
+# or
+yarn install
+```
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+### Development
 
+Start the development server:
 ```bash
 npm run dev
+```
 
-# or start the server and open the app in a new browser tab
+The app will be available at `http://localhost:5173` (or the next available port).
+
+To automatically open the app in your browser:
+```bash
 npm run dev -- --open
 ```
 
-## Building
+## How to Use
 
-To create a production version of your app:
+1. **Browse Openings**: Use the Opening Browser panel to search for and select chess openings
+2. **Configure Practice**: Set your preferred practice depth and number of variations
+3. **Start Practice**: Click "Start Practice" to begin training on your selected opening
+4. **Make Moves**: Play the opening moves on the chess board
+5. **Get Feedback**: The app will validate your moves and play the opponent's responses
+6. **Review**: Use the move history panel to review your games
 
-```bash
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+### Keyboard Shortcuts
+- `←` / `→` Arrow keys: Navigate through move history
+- Click and drag pieces or click to select and move
